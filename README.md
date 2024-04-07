@@ -1,6 +1,6 @@
 # Tsetlin Machine
 
-The Tsetlin Machine library performs quite well.
+The Tsetlin Machine library with zero dependencies performs quite well.
 
 <img src="https://raw.githubusercontent.com/BooBSD/Tsetlin.jl/main/raw/benchmark.png">
 
