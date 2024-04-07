@@ -42,7 +42,7 @@ _, tms = train!(tm, x_train, y_train, x_test, y_test, EPOCHS, best_tms_size=best
 save(tms, "/tmp/tms.tm")
 tms = load("/tmp/tms.tm")
 
-# Binomial combining of trained TM models
+# Binomial combinatorial merge of trained TM models
 _, tm = combine(tms[1:500], 2, x_test, y_test, batch=true)
 save(tm, "/tmp/tm2.tm")
 tm = load("/tmp/tm2.tm")

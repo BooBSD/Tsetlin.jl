@@ -7,7 +7,7 @@ The Tsetlin Machine library with zero external dependencies performs quite well.
 Introduction
 ------------
 
-Here is a quick "Hello, World!" example of a typical use case:
+Here is a quick "Hello, World!" example of a typical use case.
 
 Importing the MNIST dataset and booleanizing input data:
 
