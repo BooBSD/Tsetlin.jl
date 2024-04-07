@@ -2,7 +2,7 @@
 
 The Tsetlin Machine library performs quite well.
 
-<img src="https://github.com/BooBSD/Tsetlin.jl/raw/benchmark.png">
+<img src="https://raw.githubusercontent.com/BooBSD/Tsetlin.jl/main/raw/benchmark.png">
 
 How to run examples
 -------------------
