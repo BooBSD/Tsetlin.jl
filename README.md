@@ -4,6 +4,16 @@ The Tsetlin Machine library with zero external dependencies performs quite well.
 
 <img src="https://raw.githubusercontent.com/BooBSD/Tsetlin.jl/main/raw/benchmark.png">
 
+Key features:
+
+  - Single-thread or multi-thread learning and inference.
+  - Blazingly fast batch inference.
+  - Compacting/shrinking TM models to save memory and increase inference speed.
+  - Binomial combinatorial merge of trained models to achieve the best accuracy using two algorithms: merge and join.
+  - Saving/loading trained models to/from disk.
+  - Optimizing trained models by reordering included literals' indexes to maximize inference performance without batches.
+
+
 Introduction
 ------------
 
