@@ -514,16 +514,6 @@ function batches(X::Vector{TMInput})::Vector{TMInputBatch}
 end
 
 
-function batches(Y::Vector)::Vector{Vector}
-    _d, _r = divrem(length(Y), 64)
-    _Y::Vector{Vector} = Vector{Vector}(undef, _r == 0 ? _d : _d + 1)  # Predefine vector for @threads access
-    @threads for (j, i) in collect(enumerate(1:64:length(Y)))
-        _Y[j] = (j <= _d) ? Y[i:i+63] : Y[i:i+_r - 1]
-    end
-    return _Y
-end
-
-
 function benchmark(tm::AbstractTMClassifier, X::Vector{TMInput}, Y::Vector, loops::Int64; batch::Bool=false, deep_copy::Bool=false, warmup::Bool=true)
     @printf("CPU: %s\n", Sys.cpu_info()[1].model)
     print("Preparing input data for benchmark... ")
