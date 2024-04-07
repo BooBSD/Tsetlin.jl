@@ -4,7 +4,8 @@ The Tsetlin Machine library with zero external dependencies performs quite well.
 
 <img src="https://raw.githubusercontent.com/BooBSD/Tsetlin.jl/main/raw/benchmark.png">
 
-Key features:
+Key features
+------------
 
   - Single-thread or multi-thread learning and inference.
   - Blazingly fast batch inference.
