@@ -289,25 +289,6 @@ function train!(tm::TMClassifier, x::TMInput, y::Any; shuffle::Bool=true)
 end
 
 
-function train!(tm::TMClassifier, x::TMInputBatch, y::Vector; shuffle::Bool=true)
-    if shuffle
-        classes = Random.shuffle(collect(keys(tm.clauses)))
-    else
-        classes = keys(tm.clauses)
-    end
-    for z in 1:x.batch_size
-        for cls in classes
-            if cls != y[z]
-                pos, neg, pos_check, neg_check = vote2(tm.clauses[y[z]], x)
-                feedback!(tm, tm.clauses[y[z]], x, tm.clauses[y[z]].positive_clauses, tm.clauses[y[z]].negative_clauses, tm.clauses[y[z]].positive_included_literals, tm.clauses[y[z]].negative_included_literals, true, pos, neg, pos_check, neg_check, z)
-                pos, neg, pos_check, neg_check = vote2(tm.clauses[cls], x)
-                feedback!(tm, tm.clauses[cls], x, tm.clauses[cls].negative_clauses, tm.clauses[cls].positive_clauses, tm.clauses[cls].negative_included_literals, tm.clauses[cls].positive_included_literals, false, pos, neg, pos_check, neg_check, z)
-            end
-        end
-    end
-end
-
-
 function train!(tm::TMClassifier, X::Union{Vector{TMInput}, Vector{TMInputBatch}}, Y::Vector; shuffle::Bool=true)
     # If not initialized yet
     if length(tm.clauses) == 0
