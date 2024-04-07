@@ -1,4 +1,8 @@
-# Tsetlin
+# Tsetlin Machine
+
+The Tsetlin Machine library performs quite well.
+
+<img src="https://github.com/BooBSD/Tsetlin.jl/raw/benchmark.png">
 
 How to run examples
 -------------------
