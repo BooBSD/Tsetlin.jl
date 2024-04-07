@@ -289,7 +289,7 @@ function train!(tm::TMClassifier, x::TMInput, y::Any; shuffle::Bool=true)
 end
 
 
-function train!(tm::TMClassifier, X::Union{Vector{TMInput}, Vector{TMInputBatch}}, Y::Vector; shuffle::Bool=true)
+function train!(tm::TMClassifier, X::Vector{TMInput}, Y::Vector; shuffle::Bool=true)
     # If not initialized yet
     if length(tm.clauses) == 0
         initialize!(tm, X, Y)
@@ -556,9 +556,6 @@ function benchmark(tm::AbstractTMClassifier, X::Vector{TMInput}, Y::Vector, loop
     @printf("%s predictions processed in %.3f seconds.\n", length(predicted), bench_time)
     @printf("Performance: %s predictions per second.\n", floor(Int, length(predicted) / bench_time))
     @printf("Throughput: %.3f GB/s.\n", Base.summarysize(X) / 1024^3 / bench_time)
-    if batch
-        @printf("Memory read speed: %.3f GB/s (including CPU cache).\n", length(predicted) / 64 * diff_count(tm)[3] * 8 / 1024^3 / bench_time)
-    end
     @printf("Parameters during training: %s.\n", tm.clauses_num * length(keys(tm.clauses)) * length(X[1]))
     @printf("Parameters after training and compilation: %s.\n", diff_count(tm)[3])
     @printf("Accuracy: %.2f%%.\n\n", accuracy(predicted, Y) * 100)

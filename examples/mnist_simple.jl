@@ -28,7 +28,7 @@ x_test = [TMInput(vec([
     [if x > 0.66 true else false end for x in i];
 ])) for i in x_test]
 
-const EPOCHS = 500
+const EPOCHS = 1000
 const CLAUSES = 2048
 const T = 32
 const R = 0.94
@@ -52,4 +52,4 @@ optimize!(tm, x_train)
 save(tm, "/tmp/tm_optimized.tm")
 tm_opt = load("/tmp/tm_optimized.tm")
 
-benchmark(tm_opt, x_test, y_test, 6400, batch=true, warmup=true, deep_copy=true)
+benchmark(tm_opt, x_test, y_test, 1600, batch=true, warmup=true, deep_copy=true)
