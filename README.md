@@ -47,7 +47,7 @@ Load the best Tsetlin Machine model and calculate the actual test accuracy:
 
 ```julia
 tms = load("/tmp/tms.tm")
-println(accuracy(predict(tms[1], x_test), y_test))
+println(accuracy(predict(tms[1][2], x_test), y_test))
 ```
 
 How to run examples
