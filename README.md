@@ -73,7 +73,7 @@ Benchmark
 
 0. Trained and optimized models can be found in `./examples/models/`.
 1. Go to the examples directory: `cd ./examples`
-2. Run `julia --project=. -O3 -t 32,1 --gcthreads=32,1 mnist_benchmark_inference.jl` where `32` is the number of your logical CPU cores.
+2. Run `julia --project=. -O3 -t 32,1 mnist_benchmark_inference.jl` where `32` is the number of your logical CPU cores.
 
 
 
