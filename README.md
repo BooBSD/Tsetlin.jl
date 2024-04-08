@@ -68,5 +68,12 @@ How to run examples
 1. Go to the examples directory: `cd ./examples`
 2. Run `julia --project=. -O3 -t 32,1 --gcthreads=32,1 mnist_simple.jl` where `32` is the number of your logical CPU cores.
 
+Benchmark
+---------
+
+0. Trained and optimized models you can find in `./examples/models/`.
+1. Go to the examples directory: `cd ./examples`
+2. Run `julia --project=. -O3 -t 32,1 --gcthreads=32,1 mnist_benchmark_inference.jl` where `32` is the number of your logical CPU cores.
+
 
 [![Build Status](https://github.com/BooBSD/Tsetlin.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/BooBSD/Tsetlin.jl/actions/workflows/CI.yml?query=branch%3Amain)
