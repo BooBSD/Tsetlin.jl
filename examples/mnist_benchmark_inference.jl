@@ -10,15 +10,9 @@ end
 using MLDatasets: MNIST
 using .Tsetlin: TMInput, benchmark, load, unzip
 
-x_train, y_train = unzip([MNIST(split=:train)...])
 x_test, y_test = unzip([MNIST(split=:test)...])
 
 # Booleanization
-x_train = [TMInput(vec([
-    [if x > 0 true else false end for x in i];
-    [if x > 0.33 true else false end for x in i];
-    [if x > 0.66 true else false end for x in i];
-])) for i in x_train]
 x_test = [TMInput(vec([
     [if x > 0 true else false end for x in i];
     [if x > 0.33 true else false end for x in i];
