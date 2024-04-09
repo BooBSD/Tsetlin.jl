@@ -14,9 +14,9 @@ x_test, y_test = unzip([MNIST(split=:test)...])
 
 # Booleanization
 x_test = [TMInput(vec([
-    [if x > 0 true else false end for x in i];
-    [if x > 0.33 true else false end for x in i];
-    [if x > 0.66 true else false end for x in i];
+    [x > 0 ? true : false for x in i];
+    [x > 0.33 ? true : false for x in i];
+    [x > 0.66 ? true : false for x in i];
 ])) for i in x_test]
 
 tm_opt = load("./models/tm_optimized_72.tm")

@@ -34,12 +34,12 @@ Booleanizing input data:
 
 ```julia
 x_train = [TMInput(vec([
-    [if x > 0 true else false end for x in i];
-    [if x > 0.5 true else false end for x in i];
+    [x > 0 ? true : false for x in i];
+    [x > 0.5 ? true : false for x in i];
 ])) for i in x_train]
 x_test = [TMInput(vec([
-    [if x > 0 true else false end for x in i];
-    [if x > 0.5 true else false end for x in i];
+    [x > 0 ? true : false for x in i];
+    [x > 0.5 ? true : false for x in i];
 ])) for i in x_test]
 ```
 
