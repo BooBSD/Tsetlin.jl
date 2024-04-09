@@ -88,7 +88,7 @@ Trained and optimized models can be found in `./examples/models/`.
 
 How to run MNIST inference benchmark:
 
-0. Please close all other programs such as web browsers, antivirus software, torrent trackers, music players, etc.
+0. Please close all other programs such as web browsers, antivirus software, torrent clients, music players, etc.
 1. Go to the examples directory: `cd ./examples`
 2. Run `julia --project=. -O3 -t 32,1 mnist_benchmark_inference.jl` where `32` is the number of your logical CPU cores.
 

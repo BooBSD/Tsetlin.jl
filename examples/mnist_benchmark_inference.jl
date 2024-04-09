@@ -22,7 +22,7 @@ x_test = [TMInput(vec([
 tm_opt = load("./models/tm_optimized_72.tm")
 
 # Be careful; using swap will drastically decrease benchmark performance!
-# Please close all other programs like web browsers and monitor free memory.
+# Please close all other programs such as web browsers and monitor the available memory.
 # The figure 1600 represents 8.76 GB (calculated as 28 * 28 * 2 * 3 * 8 * 10000 * 1600 / 64 / 1024^3)
 # of prepared input data in memory without accounting for overhead from data structures.
 # For the MNIST test dataset, 6400 corresponds to 35 GB of prepared input data.
