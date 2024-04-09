@@ -549,13 +549,16 @@ function benchmark(tm::AbstractTMClassifier, X::Vector{TMInput}, Y::Vector, loop
         @printf("Benchmark for %s model started in %s threads... ", model_type, nthreads())
     end
     GC.gc()
+    GC.enable(false)
     bench_time = @elapsed begin
         predicted = predict(tm, X)
     end
+    X_size = Base.summarysize(X)
+    GC.enable(true)
     println("Done.")
     @printf("%s predictions processed in %.3f seconds.\n", length(predicted), bench_time)
     @printf("Performance: %s predictions per second.\n", floor(Int, length(predicted) / bench_time))
-    @printf("Throughput: %.3f GB/s.\n", Base.summarysize(X) / 1024^3 / bench_time)
+    @printf("Throughput: %.3f GB/s.\n", X_size / 1024^3 / bench_time)
     @printf("Parameters during training: %s.\n", tm.clauses_num * length(keys(tm.clauses)) * length(X[1]))
     @printf("Parameters after training and compilation: %s.\n", diff_count(tm)[3])
     @printf("Accuracy: %.2f%%.\n\n", accuracy(predicted, Y) * 100)
