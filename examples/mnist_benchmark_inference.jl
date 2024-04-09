@@ -10,8 +10,8 @@ end
 using MLDatasets: MNIST
 using .Tsetlin: TMInput, benchmark, load, unzip
 
-x_train, y_train = unzip([m for m in MNIST(split=:train)])
-x_test, y_test = unzip([m for m in MNIST(split=:test)])
+x_train, y_train = unzip([MNIST(split=:train)...])
+x_test, y_test = unzip([MNIST(split=:test)...])
 
 # Booleanization
 x_train = [TMInput(vec([
