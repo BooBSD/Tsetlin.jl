@@ -558,6 +558,7 @@ function benchmark(tm::AbstractTMClassifier, X::Vector{TMInput}, Y::Vector, loop
     println("Done.")
     @printf("%s predictions processed in %.3f seconds.\n", length(predicted), bench_time)
     @printf("Performance: %s predictions per second.\n", floor(Int, length(predicted) / bench_time))
+    @printf("Input data size: %.3f GB.\n", X_size / 1024^3)
     @printf("Throughput: %.3f GB/s.\n", X_size / 1024^3 / bench_time)
     @printf("Parameters during training: %s.\n", tm.clauses_num * length(keys(tm.clauses)) * length(X[1]))
     @printf("Parameters after training and compilation: %s.\n", diff_count(tm)[3])
