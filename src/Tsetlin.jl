@@ -343,19 +343,23 @@ end
 function compile(tm::TMClassifier; quiet::Bool=false)::TMClassifierCompiled
     if !quiet
         println("Compiling model...")
+        pos = []
+        neg = []
     end
     tmc = TMClassifierCompiled(tm.clauses_num, tm.T, tm.R, tm.L)
-    pos = []
-    neg = []
     for (cls, ta) in tm.clauses
         tmc.clauses[cls] = TATeamCompiled(tm.clauses_num)
         for (j, c) in enumerate(eachcol(ta.positive_clauses))
             tmc.clauses[cls].positive_included_literals[j] = [i for i = 1:ta.clause_size if c[i] >= ta.include_limit]
-            append!(pos, length(tmc.clauses[cls].positive_included_literals[j]))
+            if !quiet
+                append!(pos, length(tmc.clauses[cls].positive_included_literals[j]))
+            end
         end
         for (j, c) in enumerate(eachcol(ta.negative_clauses))
             tmc.clauses[cls].negative_included_literals[j] = [i for i = 1:ta.clause_size if c[i] >= ta.include_limit]
-            append!(neg, length(tmc.clauses[cls].negative_included_literals[j]))
+            if !quiet
+                append!(neg, length(tmc.clauses[cls].negative_included_literals[j]))
+            end
         end
     end
     if !quiet
