@@ -303,7 +303,7 @@ function train!(tm::TMClassifier, X::Vector{TMInput}, Y::Vector; shuffle::Bool=t
 end
 
 
-function train!(tm::TMClassifier, x_train::Vector, y_train::Vector, x_test::Vector, y_test::Vector, epochs::Int64; batch::Bool=true, shuffle::Bool=true, quiet::Bool=false, best_tms_size::Int64=16, best_tms_compile::Bool=true)::Tuple{TMClassifier, Vector{Tuple{Float64, AbstractTMClassifier}}}
+function train!(tm::TMClassifier, x_train::Vector, y_train::Vector, x_test::Vector, y_test::Vector, epochs::Int64; batch::Bool=true, shuffle::Bool=true, quiet::Bool=false, best_tms_size::Int64=16, best_tms_compile::Bool=true, best_tms_compile_quiet::Bool=true)::Tuple{TMClassifier, Vector{Tuple{Float64, AbstractTMClassifier}}}
     @assert best_tms_size in 1:2000
     if batch
         x_test = batches(x_test)
@@ -323,7 +323,7 @@ function train!(tm::TMClassifier, x_train::Vector, y_train::Vector, x_test::Vect
             if acc >= first(best_tm)
                 best_tm = (acc, deepcopy(tm))
             end
-            push!(best_tms, (acc, best_tms_compile ? compile(tm, quiet=true) : deepcopy(tm)))
+            push!(best_tms, (acc, best_tms_compile ? compile(tm, quiet=best_tms_compile_quiet) : deepcopy(tm)))
             sort!(best_tms, by=first, rev=true)
             best_tms = best_tms[1:clamp(length(best_tms), length(best_tms), best_tms_size)]
             if !quiet
@@ -342,30 +342,33 @@ end
 
 function compile(tm::TMClassifier; quiet::Bool=false)::TMClassifierCompiled
     if !quiet
-        println("Compiling model...")
+        print("Compiling model... ")
         pos = []
         neg = []
     end
-    tmc = TMClassifierCompiled(tm.clauses_num, tm.T, tm.R, tm.L)
-    for (cls, ta) in tm.clauses
-        tmc.clauses[cls] = TATeamCompiled(tm.clauses_num)
-        for (j, c) in enumerate(eachcol(ta.positive_clauses))
-            tmc.clauses[cls].positive_included_literals[j] = [i for i = 1:ta.clause_size if c[i] >= ta.include_limit]
-            if !quiet
-                append!(pos, length(tmc.clauses[cls].positive_included_literals[j]))
+        all_time = @elapsed begin
+        tmc = TMClassifierCompiled(tm.clauses_num, tm.T, tm.R, tm.L)
+        for (cls, ta) in tm.clauses
+            tmc.clauses[cls] = TATeamCompiled(tm.clauses_num)
+            for (j, c) in enumerate(eachcol(ta.positive_clauses))
+                tmc.clauses[cls].positive_included_literals[j] = [i for i = 1:ta.clause_size if c[i] >= ta.include_limit]
+                if !quiet
+                    append!(pos, length(tmc.clauses[cls].positive_included_literals[j]))
+                end
             end
-        end
-        for (j, c) in enumerate(eachcol(ta.negative_clauses))
-            tmc.clauses[cls].negative_included_literals[j] = [i for i = 1:ta.clause_size if c[i] >= ta.include_limit]
-            if !quiet
-                append!(neg, length(tmc.clauses[cls].negative_included_literals[j]))
+            for (j, c) in enumerate(eachcol(ta.negative_clauses))
+                tmc.clauses[cls].negative_included_literals[j] = [i for i = 1:ta.clause_size if c[i] >= ta.include_limit]
+                if !quiet
+                    append!(neg, length(tmc.clauses[cls].negative_included_literals[j]))
+                end
             end
         end
     end
     if !quiet
         pos_sum = sum(pos)
         neg_sum = sum(neg)
-        println("Done. Literals:")
+        @printf("Done. Time elapsed: %.3fs\n", all_time)
+        println("Literals:")
         @printf("  Pos: %s, Neg: %s, Total: %s, Per clause: %.2f\n", pos_sum, neg_sum, (pos_sum + neg_sum), (pos_sum + neg_sum) / (length(tm.clauses) * tm.clauses_num))
         @printf("  Pos min: %s, Pos max: %s, Neg min: %s, Neg max: %s\n\n", minimum(pos), maximum(pos), minimum(neg), maximum(neg))
     end
