@@ -404,7 +404,7 @@ function optimize!(tm::AbstractTMClassifier, X::Vector{TMInput}; quiet::Bool=fal
         end
     end
     if !quiet
-        println("Done.")
+        @printf("Done. Time elapsed: %.3fs\n", all_time)
     end
 end
 
