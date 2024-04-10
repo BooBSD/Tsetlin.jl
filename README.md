@@ -8,11 +8,13 @@ Key features
 ------------
 
   - Single-thread or multi-thread learning and inference.
-  - Blazingly fast batch inference.
+  - Blazingly fast batch inference is achieved through the utilization of bitwise instructions, SIMD/AVX instructions, and specialized batch processing techniques.
   - Compacting/shrinking TM models to save memory and increase inference speed.
-  - Binomial combinatorial merge of trained models to achieve the best accuracy using two algorithms: merge and join.
-  - Saving/loading trained models to/from disk.
-  - Optimizing trained models by reordering included literals' indexes to maximize inference performance without batches.
+  - Combining models with various clauses trained using different hyperparameters into a single model is an approach aimed at achieving higher accuracy using two algorithms: merge and join.
+  - Binomial combinatorial merging of trained models to achieve the best accuracy. It is a useful approach for increasing accuracy on augmented datasets or for k-fold cross-validation without risking overfitting on the test dataset.
+  - Optimizing trained models by rearranging the indexes of included literals to maximize inference performance without using batches.
+  - Saving and loading trained models to and from disk is essential for deployment in production or continuing training with modified hyperparameters.
+  - A benchmark tool with a pre-trained model.
 
 
 Introduction
