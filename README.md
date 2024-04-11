@@ -2,7 +2,7 @@
 
 The Tsetlin Machine library with zero external dependencies performs quite well.
 
-<img src="https://raw.githubusercontent.com/BooBSD/Tsetlin.jl/main/raw/benchmark.png">
+<img width="946" alt="Tsetlin Machine benchmark" src="https://github.com/BooBSD/Tsetlin.jl/assets/48304/72f4455d-f89c-41d8-8520-8e9d7cd47fd6">
 
 Key features
 ------------
