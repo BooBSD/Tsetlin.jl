@@ -11,10 +11,10 @@ using MLDatasets: MNIST, FashionMNIST
 using .Tsetlin: TMInput, TMClassifier, train!, combine, benchmark, save, load, optimize!, unzip
 
 
-x_train, y_train = unzip([MNIST(split=:train)...])
-x_test, y_test = unzip([MNIST(split=:test)...])
-# x_train, y_train = unzip([FashionMNIST(split=:train)...])
-# x_test, y_test = unzip([FashionMNIST(split=:test)...])
+x_train, y_train = unzip([MNIST(:train)...])
+x_test, y_test = unzip([MNIST(:test)...])
+# x_train, y_train = unzip([FashionMNIST(:train)...])
+# x_test, y_test = unzip([FashionMNIST(:test)...])
 
 # Booleanization
 x_train = [TMInput(vec([

@@ -10,7 +10,7 @@ end
 using MLDatasets: MNIST
 using .Tsetlin: TMInput, benchmark, load, unzip
 
-x_test, y_test = unzip([MNIST(split=:test)...])
+x_test, y_test = unzip([MNIST(:test)...])
 
 # Booleanization
 x_test = [TMInput(vec([

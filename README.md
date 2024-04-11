@@ -28,8 +28,8 @@ Importing the necessary functions and MNIST dataset:
 using MLDatasets: MNIST
 using .Tsetlin: TMInput, TMClassifier, train!, predict, accuracy, save, load, unzip
 
-x_train, y_train = unzip([MNIST(split=:train)...])
-x_test, y_test = unzip([MNIST(split=:test)...])
+x_train, y_train = unzip([MNIST(:train)...])
+x_test, y_test = unzip([MNIST(:test)...])
 ```
 
 Booleanizing input data:
