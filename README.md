@@ -1,7 +1,10 @@
 # Tsetlin Machine
 
-The Tsetlin Machine library with zero external dependencies performs quite well.
+> *“Speed is the most important feature.”*
 
+*Fred Wilson*
+
+The Tsetlin Machine library with zero external dependencies performs quite well.
 Over **50 million** MNIST predictions per second is achieved on a desktop CPU.
 
 <img width="946" alt="Tsetlin Machine benchmark" src="https://github.com/BooBSD/Tsetlin.jl/assets/48304/a6cf0696-d55f-4554-b2bc-bd9af36daa9b">
