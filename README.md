@@ -2,6 +2,8 @@
 
 The Tsetlin Machine library with zero external dependencies performs quite well.
 
+Over 50 million MNIST predictions per second is achieved on a desktop CPU.
+
 <img width="946" alt="Tsetlin Machine benchmark" src="https://github.com/BooBSD/Tsetlin.jl/assets/48304/a6cf0696-d55f-4554-b2bc-bd9af36daa9b">
 
 
@@ -86,6 +88,7 @@ How to run examples
 
 Benchmark
 ---------
+The maximum MNIST inference speed achieved is 52 million predictions per second in batch mode on a desktop CPU Ryzen 7950X3D, utilizing 32 threads.
 
 Trained and optimized models can be found in `./examples/models/`.
 
