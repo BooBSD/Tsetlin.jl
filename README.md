@@ -67,7 +67,7 @@ const L = 12
 const best_tms_size = 500
 ```
 
-Training the Tsetlin Machine over 1000 epochs and saving the best 500 compacted TM models to disk:
+Training the Tsetlin Machine over 1000 epochs and saving the best TM model to disk:
 
 ```julia
 tm = TMClassifier(CLAUSES, T, R, L=L, states_num=256, include_limit=128)
