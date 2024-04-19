@@ -43,7 +43,7 @@ save(tms, "/tmp/tms.tm")
 tms = load("/tmp/tms.tm")
 
 # Binomial combinatorial merge of trained TM models
-_, tm = combine(tms[1:500], 2, x_test, y_test, batch=true)
+_, tm = combine(tms, 2, x_test, y_test, batch=true)
 save(tm, "/tmp/tm2.tm")
 tm = load("/tmp/tm2.tm")
 
