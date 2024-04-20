@@ -303,12 +303,12 @@ function train!(tm::TMClassifier, X::Vector{TMInput}, Y::Vector; shuffle::Bool=t
 end
 
 
-function train!(tm::TMClassifier, x_train::Vector, y_train::Vector, x_test::Vector, y_test::Vector, epochs::Int64; batch::Bool=true, shuffle::Bool=true, quiet::Bool=false, best_tms_size::Int64=16, best_tms_compile::Bool=true, best_tms_compile_quiet::Bool=true)::Tuple{TMClassifier, Vector{Tuple{Float64, AbstractTMClassifier}}}
+function train!(tm::TMClassifier, x_train::Vector, y_train::Vector, x_test::Vector, y_test::Vector, epochs::Int64; batch::Bool=true, shuffle::Bool=true, verbose::Int=1, best_tms_size::Int64=16, best_tms_compile::Bool=true)::Tuple{TMClassifier, Vector{Tuple{Float64, AbstractTMClassifier}}}
     @assert best_tms_size in 1:2000
     if batch
         x_test = batches(x_test)
     end
-    if !quiet
+    if verbose > 0
         println("\nRunning in $(nthreads()) threads.")
         println("Accuracy over $(epochs) epochs (Clauses: $(tm.clauses_num), T: $(tm.T), R: $(tm.R), L: $(tm.L), states_num: $(tm.state_max + 1), include_limit: $(tm.include_limit)):\n")
     end
@@ -323,15 +323,15 @@ function train!(tm::TMClassifier, x_train::Vector, y_train::Vector, x_test::Vect
             if acc >= first(best_tm)
                 best_tm = (acc, deepcopy(tm))
             end
-            push!(best_tms, (acc, best_tms_compile ? compile(tm, quiet=best_tms_compile_quiet) : deepcopy(tm)))
+            push!(best_tms, (acc, best_tms_compile ? compile(tm, verbose=verbose - 1) : deepcopy(tm)))
             sort!(best_tms, by=first, rev=true)
             best_tms = best_tms[1:clamp(length(best_tms), length(best_tms), best_tms_size)]
-            if !quiet
+            if verbose > 0
                 @printf("#%s  Accuracy: %.2f%%  Best: %.2f%%  Training: %.3fs  Testing: %.3fs\n", i, acc * 100, best_tm[1] * 100, training_time, testing_time)
             end
         end
     end
-    if !quiet
+    if verbose > 0
         println("\nDone. $(epochs) epochs (Clauses: $(tm.clauses_num), T: $(tm.T), R: $(tm.R), L: $(tm.L), states_num: $(tm.state_max + 1), include_limit: $(tm.include_limit)).")
         elapsed = Time(0) + Second(floor(Int, all_time))
         @printf("Time elapsed: %s. Best accuracy was: %.2f%%.\n\n", elapsed, best_tm[1] * 100)
@@ -340,8 +340,8 @@ function train!(tm::TMClassifier, x_train::Vector, y_train::Vector, x_test::Vect
 end
 
 
-function compile(tm::TMClassifier; quiet::Bool=false)::TMClassifierCompiled
-    if !quiet
+function compile(tm::TMClassifier; verbose::Int=0)::TMClassifierCompiled
+    if verbose > 0
         print("Compiling model... ")
         pos = []
         neg = []
@@ -352,19 +352,19 @@ function compile(tm::TMClassifier; quiet::Bool=false)::TMClassifierCompiled
             tmc.clauses[cls] = TATeamCompiled(tm.clauses_num)
             for (j, c) in enumerate(eachcol(ta.positive_clauses))
                 tmc.clauses[cls].positive_included_literals[j] = [i for i = 1:ta.clause_size if c[i] >= ta.include_limit]
-                if !quiet
+                if verbose > 0
                     append!(pos, length(tmc.clauses[cls].positive_included_literals[j]))
                 end
             end
             for (j, c) in enumerate(eachcol(ta.negative_clauses))
                 tmc.clauses[cls].negative_included_literals[j] = [i for i = 1:ta.clause_size if c[i] >= ta.include_limit]
-                if !quiet
+                if verbose > 0
                     append!(neg, length(tmc.clauses[cls].negative_included_literals[j]))
                 end
             end
         end
     end
-    if !quiet
+    if verbose > 0
         pos_sum = sum(pos)
         neg_sum = sum(neg)
         @printf("Done. Time elapsed: %.3fs\n", all_time)
@@ -377,12 +377,12 @@ end
 
 
 function compile(tms::Vector{Tuple{Float64, AbstractTMClassifier}})::Vector{Tuple{Float64, TMClassifierCompiled}}
-    return [(acc, compile(tm, quiet=true)) for (acc, tm) in tms]
+    return [(acc, compile(tm, verbose=0)) for (acc, tm) in tms]
 end
 
 
-function optimize!(tm::AbstractTMClassifier, X::Vector{TMInput}; quiet::Bool=false)
-    if !quiet
+function optimize!(tm::AbstractTMClassifier, X::Vector{TMInput}; verbose::Int=0)
+    if verbose > 0
         print("Optimizing model... ")
     end
     all_time = @elapsed begin
@@ -403,7 +403,7 @@ function optimize!(tm::AbstractTMClassifier, X::Vector{TMInput}; quiet::Bool=fal
             end
         end
     end
-    if !quiet
+    if verbose > 0
         @printf("Done. Time elapsed: %.3fs\n", all_time)
     end
 end
