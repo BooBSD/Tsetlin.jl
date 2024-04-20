@@ -54,7 +54,7 @@ x_test = [TMInput(vec([
 There are some different hyperparameters compared to the [Vanilla Tsetlin Machine](https://github.com/cair/tmu).
 The hyperparameter `R` is a float in the range of `0.0` to `1.0`.
 To get the actual `R` from the Vanilla `S` parameter, use the following formula: `R = S / (S + 1)`.
-The hyperparameter `L` limits the number of literals in a clause.
+The hyperparameter `L` limits the number of included literals in a clause.
 `best_tms_size` is the number of the best TM models collected during the training process.
 After training, you can save this ensemble of models to your drive or increase accuracy by using Binomial Combinatorial Merge with the `combine()` function.
 

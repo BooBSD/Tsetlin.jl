@@ -6,6 +6,7 @@ using Dates
 using Random
 using Base.Threads
 using Serialization
+using Statistics: mean, median
 using Printf: @printf, @sprintf
 
 
@@ -365,12 +366,13 @@ function compile(tm::TMClassifier; verbose::Int=0)::TMClassifierCompiled
         end
     end
     if verbose > 0
+        @printf("Done. Time elapsed: %.3fs\n", all_time)
         pos_sum = sum(pos)
         neg_sum = sum(neg)
-        @printf("Done. Time elapsed: %.3fs\n", all_time)
-        println("Literals:")
-        @printf("  Pos: %s, Neg: %s, Total: %s, Per clause: %.2f\n", pos_sum, neg_sum, (pos_sum + neg_sum), (pos_sum + neg_sum) / (length(tm.clauses) * tm.clauses_num))
-        @printf("  Pos min: %s, Pos max: %s, Neg min: %s, Neg max: %s\n\n", minimum(pos), maximum(pos), minimum(neg), maximum(neg))
+        println("Included literals:")
+        @printf("  Positive: %s, Negative: %s, Total: %s, Per clause: %.2f\n", pos_sum, neg_sum, (pos_sum + neg_sum), (pos_sum + neg_sum) / (length(tm.clauses) * tm.clauses_num))
+        @printf("  Positive min: %s, max: %s, mean: %.2f, median: %s\n", minimum(pos), maximum(pos), mean(pos), median(pos))
+        @printf("  Negative min: %s, max: %s, mean: %.2f, median: %s\n", minimum(neg), maximum(neg), mean(neg), median(neg))
     end
     return tmc
 end

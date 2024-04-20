@@ -37,7 +37,7 @@ const best_tms_size = 500
 
 # Training the TM model
 tm = TMClassifier(CLAUSES, T, R, L=L, states_num=256, include_limit=128)
-_, tms = train!(tm, x_train, y_train, x_test, y_test, EPOCHS, best_tms_size=best_tms_size, best_tms_compile=true, shuffle=true, batch=true)
+_, tms = train!(tm, x_train, y_train, x_test, y_test, EPOCHS, best_tms_size=best_tms_size, shuffle=true, batch=true, verbose=1)
 
 save(tms, "/tmp/tms.tm")
 tms = load("/tmp/tms.tm")
