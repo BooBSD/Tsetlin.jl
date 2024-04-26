@@ -87,7 +87,7 @@ How to run examples
 
 0. Make sure that you have installed the latest version of the [Julia language](https://julialang.org/downloads/).
 1. Go to the examples directory: `cd ./examples`
-2. Run `julia --project=. -O3 -t 32,1 --gcthreads=32,1 mnist_simple.jl` where `32` is the number of your logical CPU cores.
+2. Run `julia --project=. -O3 -t 32 --gcthreads=32,1 mnist_simple.jl` where `32` is the number of your logical CPU cores.
 
 Benchmark
 ---------
@@ -99,7 +99,7 @@ How to run MNIST inference benchmark:
 
 0. Please close all other programs such as web browsers, antivirus software, torrent clients, music players, etc.
 1. Go to the examples directory: `cd ./examples`
-2. Run `julia --project=. -O3 -t 32,1 mnist_benchmark_inference.jl` where `32` is the number of your logical CPU cores.
+2. Run `julia --project=. -O3 -t 32 mnist_benchmark_inference.jl` where `32` is the number of your logical CPU cores.
 
 
 
