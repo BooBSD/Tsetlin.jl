@@ -131,8 +131,8 @@ end
 
 
 function check_clause(x::TMInput, literals::Vector{UInt16})::Bool
-    @inbounds for i in eachindex(literals)
-        if !x[literals[i]]
+    @inbounds for l in literals
+        if !x[l]
             return false
         end
     end
@@ -142,16 +142,16 @@ end
 
 function check_clause(x::TMInputBatch, literals::Vector{UInt16})::UInt64
     b::UInt64 = typemin(UInt64)
-    @inbounds for i in eachindex(literals)
-        b |= x[literals[i]]
+    @inbounds @simd for l in literals
+        b |= x[l]
     end
     return b
 end
 
 
 function vote(ta::AbstractTATeam, x::TMInput)::Tuple{Int64, Int64}
-    pos = sum(check_clause(x, ta.positive_included_literals[i]) for i in eachindex(ta.positive_included_literals))
-    neg = sum(check_clause(x, ta.negative_included_literals[i]) for i in eachindex(ta.negative_included_literals))
+    pos = sum(check_clause(x, l) for l in ta.positive_included_literals)
+    neg = sum(check_clause(x, l) for l in ta.negative_included_literals)
     return pos, neg
 end
 
@@ -159,12 +159,12 @@ end
 function vote(ta::AbstractTATeam, x::TMInputBatch)::Tuple{Vector{Int64}, Vector{Int64}}
     pos_sum::Vector{Int64} = fill(0, 64)
     neg_sum::Vector{Int64} = fill(0, 64)
-    @inbounds for p in (check_clause(x, ta.positive_included_literals[j]) for j in eachindex(ta.positive_included_literals))
+    @inbounds for p in (check_clause(x, l) for l in ta.positive_included_literals)
         @inbounds @simd for i in 1:64
             pos_sum[i] -= isbitset(p, UInt64(i - 1))
         end
     end
-    @inbounds for n in (check_clause(x, ta.negative_included_literals[j]) for j in eachindex(ta.negative_included_literals))
+    @inbounds for n in (check_clause(x, l) for l in ta.negative_included_literals)
         @inbounds @simd for i in 1:64
             neg_sum[i] -= isbitset(n, UInt64(i - 1))
         end
@@ -562,9 +562,9 @@ function benchmark(tm::AbstractTMClassifier, X::Vector{TMInput}, Y::Vector, loop
     bench_time = @elapsed begin
         predicted = predict(tm, X)
     end
+    println("Done.")
     X_size = Base.summarysize(X)
     GC.enable(true)
-    println("Done.")
     @printf("%s predictions processed in %.3f seconds.\n", length(predicted), bench_time)
     @printf("Performance: %s predictions per second.\n", floor(Int, length(predicted) / bench_time))
     @printf("Throughput: %.3f GB/s.\n", X_size / 1024^3 / bench_time)
