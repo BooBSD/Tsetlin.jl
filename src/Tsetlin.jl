@@ -259,14 +259,19 @@ function predict(tm::AbstractTMClassifier, X::Vector{TMInputBatch})::Vector
     @threads for i in eachindex(X)
         predicted[i] = predict(tm, X[i])
     end
-    return vcat(predicted...)
+    return predicted
 end
 
 
-function accuracy(predicted::Vector, Y::Vector)::Float64
-    @assert eltype(predicted) == eltype(Y)
+function accuracy(predicted::Vector{T}, Y::Vector{T})::Float64 where T
     @assert length(predicted) == length(Y)
     return sum(@inbounds 1 for (p, y) in zip(predicted, Y) if p == y; init=0) / length(Y)
+end
+
+
+function accuracy(predicted::Vector{Vector{T}}, Y::Vector{T})::Float64 where T
+    predicted = vcat(predicted...)
+    return accuracy(predicted, Y)
 end
 
 
@@ -561,6 +566,9 @@ function benchmark(tm::AbstractTMClassifier, X::Vector{TMInput}, Y::Vector, loop
     println("Done.")
     X_size = Base.summarysize(X)
     GC.enable(true)
+    if batch
+        predicted = vcat(predicted...)
+    end
     @printf("%s predictions processed in %.3f seconds.\n", length(predicted), bench_time)
     @printf("Performance: %s predictions per second.\n", floor(Int, length(predicted) / bench_time))
     @printf("Throughput: %.3f GB/s.\n", X_size / 1024^3 / bench_time)
