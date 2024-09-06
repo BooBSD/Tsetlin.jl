@@ -10,6 +10,8 @@ using Statistics: mean, median
 using Printf: @printf, @sprintf
 
 
+Base.exit_on_sigint(false)
+
 unzip(a) = (getfield.(a, x) for x in fieldnames(eltype(a)))
 
 isbitset(x::UInt64, n::UInt64)::Bool = (x >> n) & one(UInt64)
