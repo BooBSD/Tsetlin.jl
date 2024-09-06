@@ -158,20 +158,14 @@ function vote(ta::AbstractTATeam, x::TMInput)::Tuple{Int64, Int64}
 end
 
 
-function vote(ta::AbstractTATeam, x::TMInputBatch)::Tuple{Vector{Int64}, Vector{Int64}}
-    pos_sum::Vector{Int64} = fill(0, 64)
-    neg_sum::Vector{Int64} = fill(0, 64)
-    @inbounds for p in (check_clause(x, ta.positive_included_literals[j]) for j in eachindex(ta.positive_included_literals))
+function vote(ta::AbstractTATeam, x::TMInputBatch)::Vector{Int64}
+    votes::Vector{Int64} = fill(0, 64)
+    @inbounds for (p, n) in zip((check_clause(x, pil) for pil in ta.positive_included_literals), (check_clause(x, nil) for nil in ta.negative_included_literals))
         @inbounds @simd for i in 1:64
-            pos_sum[i] -= isbitset(p, UInt64(i - 1))
+            votes[i] += (isbitset(n, UInt64(i - 1)) - isbitset(p, UInt64(i - 1)))
         end
     end
-    @inbounds for n in (check_clause(x, ta.negative_included_literals[j]) for j in eachindex(ta.negative_included_literals))
-        @inbounds @simd for i in 1:64
-            neg_sum[i] -= isbitset(n, UInt64(i - 1))
-        end
-    end
-    return pos_sum, neg_sum
+    return votes
 end
 
 
@@ -239,14 +233,13 @@ function predict(tm::AbstractTMClassifier, x::TMInputBatch)::Vector{Any}
     best_vote::Vector{Int64} = fill(typemin(Int64), x.batch_size)
     best_cls::Vector{Any} = fill(nothing, x.batch_size)
     @inbounds for (cls, ta) in tm.clauses
-        pos_sum, neg_sum = vote(ta, x)
+        votes = vote(ta, x)
         @inbounds for i in 1:x.batch_size
-            v::Int64 = pos_sum[i] - neg_sum[i]
-            if v > best_vote[i]
-                best_vote[i] = v
+            if votes[i] > best_vote[i]
+                best_vote[i] = votes[i]
                 best_cls[i] = cls
             end
-        end
+        end 
     end
     return best_cls
 end
