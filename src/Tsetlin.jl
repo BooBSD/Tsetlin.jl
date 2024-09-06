@@ -525,6 +525,7 @@ end
 
 function benchmark(tm::AbstractTMClassifier, X::Vector{TMInput}, Y::Vector, loops::Int64; batch::Bool=false, deep_copy::Bool=false, warmup::Bool=true)
     @printf("CPU: %s\n", Sys.cpu_info()[1].model)
+    @printf("Running in %s threads.\n", nthreads())
     print("Preparing input data for benchmark... ")
     GC.gc()
     prepare_time = @elapsed begin
@@ -545,7 +546,7 @@ function benchmark(tm::AbstractTMClassifier, X::Vector{TMInput}, Y::Vector, loop
     @printf("Done. Elapsed %.3f seconds.\n", prepare_time)
     GC.gc()
     if warmup
-        @printf("Warm-up started in %s threads... ", nthreads())
+        print("Warm-up started... ")
         warmup_time = @elapsed begin
             predict(tm, X)
         end
@@ -553,9 +554,9 @@ function benchmark(tm::AbstractTMClassifier, X::Vector{TMInput}, Y::Vector, loop
     end
     model_type = last(split(string(typeof(tm)), '.'))
     if batch
-        @printf("Benchmark for %s model in batch mode (batch size = %s) started in %s threads... ", model_type, ndigits(typemax(typeof(X[1][1])), base=2), nthreads())
+        @printf("Benchmark for %s model in batch mode (batch size = %s) started... ", model_type, ndigits(typemax(typeof(X[1][1])), base=2))
     else
-        @printf("Benchmark for %s model started in %s threads... ", model_type, nthreads())
+        @printf("Benchmark for %s model started... ", model_type)
     end
     GC.gc()
     GC.enable(false)
