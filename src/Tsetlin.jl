@@ -584,21 +584,20 @@ function benchmark(tm::AbstractTMClassifier, X::Vector{TMInput}, Y::Vector, loop
 end
 
 
-function diff_count(tm::AbstractTMClassifier)::Tuple{Int64, Int64, Int64, Int64}
-    literals::Int64 = 0
+function diff_count(tm::AbstractTMClassifier)::Tuple{Int64, Int64, Int64, Int64, Int64}
     pos = []
     neg = []
     for (k, clauses) in tm.clauses
         for c in clauses.positive_included_literals
             append!(pos, [c])
-            literals += length(c)
         end
         for c in clauses.negative_included_literals
             append!(neg, [c])
-            literals += length(c)
         end
     end
-    return literals, length(Set([pos; neg])), length(pos) - length(Set(pos)), length(neg) - length(Set(neg))
+    pos = vcat(pos...)
+    neg = vcat(neg...)
+    return length(pos) + length(neg), length(union(pos, neg)), length(intersect(pos, neg)), length(pos) - length(Set(pos)), length(neg) - length(Set(neg))
 end
 
 end # module
