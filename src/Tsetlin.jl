@@ -313,7 +313,7 @@ function train!(tm::TMClassifier, X::Vector{TMInput}, Y::Vector; shuffle::Bool=t
 end
 
 
-function train!(tm::TMClassifier, x_train::Vector, y_train::Vector, x_test::Vector, y_test::Vector, epochs::Int64; batch::Bool=true, shuffle::Bool=true, verbose::Int=1, best_tms_size::Int64=16, best_tms_compile::Bool=true)::Tuple{TMClassifier, Vector{Tuple{Float64, AbstractTMClassifier}}}
+function train!(tm::TMClassifier, x_train::Vector, y_train::Vector, x_test::Vector, y_test::Vector, epochs::Int64; batch::Bool=true, shuffle::Bool=true, verbose::Int=1, best_tms_size::Int64=16, best_tms_compile::Bool=true)::Vector{Tuple{AbstractTMClassifier, Float64}}
     @assert best_tms_size in 1:2000
     if batch
         x_test = batches(x_test)
@@ -322,31 +322,27 @@ function train!(tm::TMClassifier, x_train::Vector, y_train::Vector, x_test::Vect
         println("\nRunning in $(nthreads()) threads.")
         println("Accuracy over $(epochs) epochs (Clauses: $(tm.clauses_num), T: $(tm.T), R: $(tm.R), L: $(tm.L), states_num: $(tm.state_max + 1), include_limit: $(tm.include_limit)):\n")
     end
-    best_tm = (0.0, nothing)
-    best_tms = Tuple{Float64, AbstractTMClassifier}[]
+    best_tms = Tuple{AbstractTMClassifier, Float64}[]
     all_time = @elapsed begin
         for i in 1:epochs
             training_time = @elapsed train!(tm, x_train, y_train, shuffle=shuffle)
             testing_time = @elapsed begin
                 acc = accuracy(predict(tm, x_test), y_test)
             end
-            if acc >= first(best_tm)
-                best_tm = (acc, deepcopy(tm))
-            end
-            push!(best_tms, (acc, best_tms_compile ? compile(tm, verbose=verbose - 1) : deepcopy(tm)))
-            sort!(best_tms, by=first, rev=true)
+            push!(best_tms, (best_tms_compile ? compile(tm, verbose=verbose - 1) : deepcopy(tm), acc))
+            sort!(best_tms, by=last, rev=true)
             best_tms = best_tms[1:clamp(length(best_tms), length(best_tms), best_tms_size)]
             if verbose > 0
-                @printf("#%s  Accuracy: %.2f%%  Best: %.2f%%  Training: %.3fs  Testing: %.3fs\n", i, acc * 100, best_tm[1] * 100, training_time, testing_time)
+                @printf("#%s  Accuracy: %.2f%%  Best: %.2f%%  Training: %.3fs  Testing: %.3fs\n", i, acc * 100, best_tms[1][2] * 100, training_time, testing_time)
             end
         end
     end
     if verbose > 0
         println("\nDone. $(epochs) epochs (Clauses: $(tm.clauses_num), T: $(tm.T), R: $(tm.R), L: $(tm.L), states_num: $(tm.state_max + 1), include_limit: $(tm.include_limit)).")
         elapsed = Time(0) + Second(floor(Int, all_time))
-        @printf("Time elapsed: %s. Best accuracy was: %.2f%%.\n\n", elapsed, best_tm[1] * 100)
+        @printf("Time elapsed: %s. Best accuracy was: %.2f%%.\n\n", elapsed, best_tms[1][2] * 100)
     end
-    return best_tm[2], best_tms
+    return best_tms
 end
 
 
@@ -387,8 +383,8 @@ function compile(tm::TMClassifier; verbose::Int=0)::TMClassifierCompiled
 end
 
 
-function compile(tms::Vector{Tuple{Float64, AbstractTMClassifier}})::Vector{Tuple{Float64, TMClassifierCompiled}}
-    return [(acc, compile(tm, verbose=0)) for (acc, tm) in tms]
+function compile(tms::Vector{Tuple{AbstractTMClassifier, Float64}})::Vector{Tuple{TMClassifierCompiled, Float64}}
+    return [(compile(tm, verbose=0), acc) for (tm, acc) in tms]
 end
 
 
@@ -420,7 +416,7 @@ function optimize!(tm::AbstractTMClassifier, X::Vector{TMInput}; verbose::Int=0)
 end
 
 
-function save(tm::Union{AbstractTMClassifier, Tuple{Float64, AbstractTMClassifier}, Vector{Tuple{Float64, AbstractTMClassifier}}}, filepath::AbstractString)
+function save(tm::Union{AbstractTMClassifier, Tuple{AbstractTMClassifier, Float64}, Vector{Tuple{AbstractTMClassifier, Float64}}}, filepath::AbstractString)
     if !endswith(filepath, ".tm")
         filepath = string(filepath, ".tm")
     end
@@ -493,31 +489,31 @@ function merge(tms::AbstractTMClassifier...; algo::Symbol=:merge)::AbstractTMCla
 end
 
 
-function combine(tms, k::Int64, x_test::Vector, y_test::Vector; algo::Symbol=:merge, batch::Bool=true)::Tuple{Float64, AbstractTMClassifier}
+function combine(tms, k::Int64, x_test::Vector, y_test::Vector; algo::Symbol=:merge, batch::Bool=true)::Tuple{AbstractTMClassifier, Float64}
     @assert algo in (:merge, :join)
     if batch
         x_test = batches(x_test)
     end
-    tm = deepcopy(tms[1][2])
-    best = (0.0, nothing)
+    tm = deepcopy(tms[1][1])
+    best = (nothing, 0.0)
     combinations = Set(s for s in (Set(c) for c in Iterators.product((1:length(tms) for _ in 1:k)...)) if length(s) == k)
     println("Trying to find best combine accuracy among $(length(combinations)) of $(k) combined models (algo: $(algo), batch size: $(length(tms)))...")
     all_time = @elapsed begin
         for (i, c) in enumerate(combinations)
             merging_time = @elapsed begin
-                merge!(tm, (tms[t][2] for t in c)...; algo=algo)
+                merge!(tm, (tms[t][1] for t in c)...; algo=algo)
             end
             testing_time = @elapsed begin
                 acc = accuracy(predict(tm, x_test), y_test)
             end
-            if acc >= first(best)
-                best = (acc, deepcopy(tm))
+            if acc >= last(best)
+                best = (deepcopy(tm), acc)
             end
-            @printf("#%s  Accuracy: %s = %.2f%%  Best: %.2f%%  Merging: %.3fs  Testing: %.3fs\n", i, join([@sprintf("%.2f%%", tms[t][1] * 100) for t in c], " + "), acc * 100, first(best) * 100, merging_time, testing_time)
+            @printf("#%s  Accuracy: %s = %.2f%%  Best: %.2f%%  Merging: %.3fs  Testing: %.3fs\n", i, join([@sprintf("%.2f%%", tms[t][2] * 100) for t in c], " + "), acc * 100, last(best) * 100, merging_time, testing_time)
         end
     end
     elapsed = Time(0) + Second(floor(Int, all_time))
-    @printf("Time elapsed: %s. Best %s combined models accuracy (algo: %s, batch size: %s): %.2f%%.\n\n", elapsed, k, algo, length(tms), first(best) * 100)
+    @printf("Time elapsed: %s. Best %s combined models accuracy (algo: %s, batch size: %s): %.2f%%.\n\n", elapsed, k, algo, length(tms), last(best) * 100)
     return best
 end
 

@@ -66,18 +66,19 @@ const L = 12
 const best_tms_size = 500
 ```
 
-Training the Tsetlin Machine over 1000 epochs and saving the best TM model to disk:
+Training the Tsetlin Machine over 1000 epochs and saving the best TM models to disk:
 
 ```julia
 tm = TMClassifier{eltype(y_test)}(CLAUSES, T, R, L=L, states_num=256, include_limit=128)
-tm_best, tms = train!(tm, x_train, y_train, x_test, y_test, EPOCHS, best_tms_size=best_tms_size, best_tms_compile=true, shuffle=true, batch=true)
-save(tm_best, "/tmp/tm_best.tm")
+tms = train!(tm, x_train, y_train, x_test, y_test, EPOCHS, best_tms_size=best_tms_size, best_tms_compile=true, shuffle=true, batch=true)
+save(tms, "/tmp/tms_best.tm")
 ```
 
 Load the best Tsetlin Machine model and calculate the actual test accuracy:
 
 ```julia
-tm = load("/tmp/tm_best.tm")
+tms = load("/tmp/tms_best.tm")
+tm = tms[1][1]
 println(accuracy(predict(tm, x_test), y_test))
 ```
 

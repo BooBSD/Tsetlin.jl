@@ -28,22 +28,27 @@ x_test = [TMInput(vec([
     [x > 0.66 ? true : false for x in i];
 ])) for i in x_test]
 
-const EPOCHS = 1000
-const CLAUSES = 2048
-const T = 32
-const R = 0.94
-const L = 12
+# const CLAUSES = 2048
+# const T = 32
+# const R = 0.94
+# const L = 12
+const CLAUSES = 128
+const T = 8
+const R = 0.89
+const L = 16
+
+const EPOCHS = 10
 const best_tms_size = 500
 
 # Training the TM model
 tm = TMClassifier{eltype(y_test)}(CLAUSES, T, R, L=L, states_num=256, include_limit=128)
-_, tms = train!(tm, x_train, y_train, x_test, y_test, EPOCHS, best_tms_size=best_tms_size, shuffle=true, batch=true, verbose=1)
+tms = train!(tm, x_train, y_train, x_test, y_test, EPOCHS, best_tms_size=best_tms_size, shuffle=true, batch=true, verbose=1)
 
 save(tms, "/tmp/tms.tm")
 tms = load("/tmp/tms.tm")
 
 # Binomial combinatorial merge of trained TM models
-_, tm = combine(tms, 2, x_test, y_test, batch=true)
+tm, _ = combine(tms, 2, x_test, y_test, batch=true)
 save(tm, "/tmp/tm2.tm")
 tm = load("/tmp/tm2.tm")
 
