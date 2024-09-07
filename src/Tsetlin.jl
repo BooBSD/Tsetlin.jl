@@ -579,12 +579,12 @@ function benchmark(tm::AbstractTMClassifier, X::Vector{TMInput}, Y::Vector, loop
     @printf("Throughput: %.3f GB/s.\n", X_size / 1024^3 / bench_time)
     @printf("Input data size: %.3f GB.\n", X_size / 1024^3)
     @printf("Parameters during training: %s.\n", tm.clauses_num * length(keys(tm.clauses)) * length(X[1]))
-    @printf("Parameters after training and compilation: %s.\n", diff_count(tm)[3])
+    @printf("Parameters after training and compilation: %s.\n", diff_count(tm)[1])
     @printf("Accuracy: %.2f%%.\n\n", accuracy(predicted, Y) * 100)
 end
 
 
-function diff_count(tm::AbstractTMClassifier)::Tuple{Int64, Int64, Int64}
+function diff_count(tm::AbstractTMClassifier)::Tuple{Int64, Int64, Int64, Int64}
     literals::Int64 = 0
     pos = []
     neg = []
@@ -598,7 +598,7 @@ function diff_count(tm::AbstractTMClassifier)::Tuple{Int64, Int64, Int64}
             literals += length(c)
         end
     end
-    return length(pos) - length(Set(pos)), length(neg) - length(Set(neg)), literals
+    return literals, length(Set([pos; neg])), length(pos) - length(Set(pos)), length(neg) - length(Set(neg))
 end
 
 end # module
