@@ -550,6 +550,7 @@ function benchmark(tm::AbstractTMClassifier, X::Vector{TMInput}, Y::Vector, loop
     end
     @printf("Done. Elapsed %.3f seconds.\n", prepare_time)
     GC.gc()
+    X_size = Base.summarysize(X)
     if warmup
         print("Warm-up started... ")
         warmup_time = @elapsed begin
@@ -569,7 +570,6 @@ function benchmark(tm::AbstractTMClassifier, X::Vector{TMInput}, Y::Vector, loop
         predicted = predict(tm, X)
     end
     println("Done.")
-    X_size = Base.summarysize(X)
     GC.enable(true)
     if batch
         predicted = vcat(predicted...)
