@@ -29,6 +29,7 @@ end
 abstract type AbstractTATeam end
 abstract type AbstractTMClassifier end
 
+class_type(tm::AbstractTMClassifier)::DataType = typeof(tm).parameters[1]
 
 mutable struct TATeam <: AbstractTATeam
     const include_limit::UInt8
@@ -50,7 +51,7 @@ mutable struct TATeam <: AbstractTATeam
 end
 
 
-mutable struct TMClassifier <: AbstractTMClassifier
+mutable struct TMClassifier{ClassType} <: AbstractTMClassifier
     clauses_num::Int64
     T::Int64
     R::Float64
@@ -58,10 +59,10 @@ mutable struct TMClassifier <: AbstractTMClassifier
     const include_limit::Int64
     const state_min::Int64
     const state_max::Int64
-    const clauses::Dict{Any, TATeam}
+    const clauses::Dict{ClassType, TATeam}
 
-    function TMClassifier(clauses_num::Int64, T::Int64, R::Float64; states_num::Int64=256, include_limit::Int64=128, L::Int64=16)
-        return new(clauses_num, T, R, L, include_limit, typemin(UInt8), states_num - 1, Dict())
+    function TMClassifier{ClassType}(clauses_num::Int64, T::Int64, R::Float64; states_num::Int64=256, include_limit::Int64=128, L::Int64=16) where ClassType
+        return new{ClassType}(clauses_num, T, R, L, include_limit, typemin(UInt8), states_num - 1, Dict())
     end
 end
 
@@ -78,15 +79,15 @@ mutable struct TATeamCompiled <: AbstractTATeam
 end
 
 
-struct TMClassifierCompiled <: AbstractTMClassifier
+struct TMClassifierCompiled{ClassType} <: AbstractTMClassifier
     clauses_num::Int64
     T::Int64
     R::Float64
     L::Int64
-    clauses::Dict{Any, TATeamCompiled}
+    clauses::Dict{ClassType, TATeamCompiled}
 
-    function TMClassifierCompiled(clauses_num::Int64, T::Int64, R::Float64, L::Int64)
-        return new(clauses_num, T, R, L, Dict())
+    function TMClassifierCompiled{ClassType}(clauses_num::Int64, T::Int64, R::Float64, L::Int64) where ClassType
+        return new{ClassType}(clauses_num, T, R, L, Dict())
     end
 end
 
@@ -229,9 +230,9 @@ function predict(tm::AbstractTMClassifier, x::AbstractTMInput)::Any
 end
 
 
-function predict(tm::AbstractTMClassifier, x::TMInputBatch)::Vector{Any}
+function predict(tm::AbstractTMClassifier, x::TMInputBatch)::Vector
     best_vote::Vector{Int64} = fill(typemin(Int64), x.batch_size)
-    best_cls::Vector{Any} = fill(nothing, x.batch_size)
+    best_cls::Vector = Vector{class_type(tm)}(undef, x.batch_size)
     @inbounds for (cls, ta) in tm.clauses
         votes = vote(ta, x)
         @inbounds for i in 1:x.batch_size
@@ -246,7 +247,7 @@ end
 
 
 function predict(tm::AbstractTMClassifier, X::Vector{TMInput})::Vector
-    predicted::Vector = Vector{eltype(first(keys(tm.clauses)))}(undef, length(X))  # Predefine vector for @threads access
+    predicted::Vector = Vector{class_type(tm)}(undef, length(X))  # Predefine vector for @threads access
     @threads for i in eachindex(X)
         predicted[i] = predict(tm, X[i])
     end
@@ -255,7 +256,7 @@ end
 
 
 function predict(tm::AbstractTMClassifier, X::Vector{TMInputBatch})::Vector
-    predicted::Vector = Vector{Vector{eltype(first(keys(tm.clauses)))}}(undef, length(X))  # Predefine vector for @threads access
+    predicted::Vector = Vector{Vector{class_type(tm)}}(undef, length(X))  # Predefine vector for @threads access
     @threads for i in eachindex(X)
         predicted[i] = predict(tm, X[i])
     end
@@ -356,7 +357,7 @@ function compile(tm::TMClassifier; verbose::Int=0)::TMClassifierCompiled
         neg = []
     end
         all_time = @elapsed begin
-        tmc = TMClassifierCompiled(tm.clauses_num, tm.T, tm.R, tm.L)
+        tmc = TMClassifierCompiled{class_type(tm)}(tm.clauses_num, tm.T, tm.R, tm.L)
         for (cls, ta) in tm.clauses
             tmc.clauses[cls] = TATeamCompiled(tm.clauses_num)
             for (j, c) in enumerate(eachcol(ta.positive_clauses))
