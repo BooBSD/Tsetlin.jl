@@ -270,8 +270,16 @@ end
 
 
 function accuracy(predicted::Vector{Vector{T}}, Y::Vector{T})::Float64 where T
-    predicted = vcat(predicted...)
-    return accuracy(predicted, Y)
+    c::Int64 = 0
+    a::Int64 = 0
+    @inbounds for batch in predicted
+        @inbounds @simd for pred in batch
+            c += 1
+            a += (pred == Y[c])
+        end
+    end
+    @assert c == length(Y)
+    return a / c
 end
 
 
