@@ -250,7 +250,7 @@ function predict(tm::AbstractTMClassifier, x::TMInputBatch, best_vote::Vector{In
         end 
     end
     # Yes, we need to allocate a new array here using collect()
-    return collect(best_cls)
+    return best_cls[1:x.batch_size]
 end
 
 function predict(tm::AbstractTMClassifier, x::TMInputBatch)::Vector
@@ -277,8 +277,8 @@ function predict(tm::AbstractTMClassifier, X::Vector{TMInputBatch})::Vector
         thread_best_vote[tid], thread_best_cls[tid], thread_votes[tid] = predefine_batch_arrays(tm)
     end
     @threads for i in eachindex(X)
-#        tid::Int64 = Threads.threadid()
-        predicted[i] = predict(tm, X[i], thread_best_vote[Threads.threadid()], thread_best_cls[Threads.threadid()], thread_votes[Threads.threadid()])
+        tid::Int64 = Threads.threadid()
+        predicted[i] = predict(tm, X[i], thread_best_vote[tid], thread_best_cls[tid], thread_votes[tid])
     end
     return predicted
 end
