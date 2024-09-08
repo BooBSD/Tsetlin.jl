@@ -229,11 +229,16 @@ function predict(tm::AbstractTMClassifier, x::AbstractTMInput)::Any
 end
 
 
-function predict(tm::AbstractTMClassifier, x::TMInputBatch)::Vector
-    best_vote::Vector{Int64} = fill(typemin(Int64), x.batch_size)
-    best_cls::Vector = Vector{class_type(tm)}(undef, x.batch_size)
-
+function predefine_batch_arrays(tm::AbstractTMClassifier)::Tuple{Vector{Int64}, Vector{class_type(tm)}, Vector{Int64}}
+    best_vote::Vector{Int64} = fill(typemin(Int64), 64)
+    best_cls::Vector = Vector{class_type(tm)}(undef, 64)
     votes::Vector{Int64} = Vector{Int64}(undef, 64)
+    return best_vote, best_cls, votes
+end
+
+
+function predict(tm::AbstractTMClassifier, x::TMInputBatch, best_vote::Vector{Int64}, best_cls::Vector, votes::Vector{Int64})
+    fill!(best_vote, typemin(Int64))
     @inbounds for (cls, ta) in tm.clauses
         fill!(votes, 0)
         votes = vote(ta, x, votes)
@@ -244,7 +249,12 @@ function predict(tm::AbstractTMClassifier, x::TMInputBatch)::Vector
             end
         end 
     end
-    return best_cls
+    # Yes, we need to allocate a new array here using collect()
+    return collect(best_cls)
+end
+
+function predict(tm::AbstractTMClassifier, x::TMInputBatch)::Vector
+    predict(tm, x, predefine_batch_arrays(tm)...)
 end
 
 
@@ -258,9 +268,17 @@ end
 
 
 function predict(tm::AbstractTMClassifier, X::Vector{TMInputBatch})::Vector
-    predicted::Vector = Vector{Vector{class_type(tm)}}(undef, length(X))  # Predefine vector for @threads access
+    # Predefine vectors for @threads access
+    predicted = Vector{Vector{class_type(tm)}}(undef, length(X))
+    thread_best_vote = Vector{Vector{Int64}}(undef, Threads.nthreads())
+    thread_best_cls = Vector{Vector{class_type(tm)}}(undef, Threads.nthreads())
+    thread_votes = Vector{Vector{Int64}}(undef, Threads.nthreads())
+    for tid in 1:Threads.nthreads()
+        thread_best_vote[tid], thread_best_cls[tid], thread_votes[tid] = predefine_batch_arrays(tm)
+    end
     @threads for i in eachindex(X)
-        predicted[i] = predict(tm, X[i])
+#        tid::Int64 = Threads.threadid()
+        predicted[i] = predict(tm, X[i], thread_best_vote[Threads.threadid()], thread_best_cls[Threads.threadid()], thread_votes[Threads.threadid()])
     end
     return predicted
 end
