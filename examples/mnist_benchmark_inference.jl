@@ -19,6 +19,10 @@ x_test = [TMInput(vec([
     [x > 0.66 ? true : false for x in i];
 ])) for i in x_test]
 
+# Convert y_test to the Int8 type to save memory
+y_test = Int8.(y_test)
+
+# Load the pretrained model
 tm_opt = load("./models/tm_optimized_72.tm")
 
 # Be careful; using swap will drastically decrease benchmark performance!
