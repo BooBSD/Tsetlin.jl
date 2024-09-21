@@ -28,20 +28,30 @@ x_test = [TMInput(vec([
     [x > 0.66 ? true : false for x in i];
 ])) for i in x_test]
 
+# Convert y_train and y_test to the Int8 type to save memory
+y_train = Int8.(y_train)
+y_test = Int8.(y_test)
+
 # const CLAUSES = 2048
 # const T = 32
 # const R = 0.94
 # const L = 12
+
 const CLAUSES = 128
 const T = 8
 const R = 0.89
 const L = 16
 
-const EPOCHS = 10
-const best_tms_size = 500
+# const CLAUSES = 84
+# const T = 5
+# const R = 0.85
+# const L = 11
+
+const EPOCHS = 2000
+const best_tms_size = 512
 
 # Training the TM model
-tm = TMClassifier{eltype(y_test)}(CLAUSES, T, R, L=L, states_num=256, include_limit=128)
+tm = TMClassifier{eltype(y_train)}(CLAUSES, T, R, L=L, states_num=256, include_limit=128)
 tms = train!(tm, x_train, y_train, x_test, y_test, EPOCHS, best_tms_size=best_tms_size, shuffle=true, batch=true, verbose=1)
 
 save(tms, "/tmp/tms.tm")
@@ -57,4 +67,4 @@ optimize!(tm, x_train)
 save(tm, "/tmp/tm_optimized.tm")
 tm_opt = load("/tmp/tm_optimized.tm")
 
-benchmark(tm_opt, x_test, y_test, 1600, batch=true, warmup=true, deep_copy=true)
+benchmark(tm_opt, x_test, y_test, 2000, batch=true, warmup=true, deep_copy=true)
