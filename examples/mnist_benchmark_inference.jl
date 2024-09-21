@@ -26,7 +26,7 @@ tm_opt = load("./models/tm_optimized_84.tm")
 # Be careful; using swap will drastically decrease benchmark performance!
 # Please close all other programs such as web browsers and monitor the available memory.
 # The number 5000 represents the number of loops in the testing data, which corresponds to 4.6 GB 
-# (calculated as 28 * 28 * 8 * 10000 * 5000 / 64 / 1024^3) of prepared input data in memory
+# (calculated as 28 * 28 * 10000 * 5000 / 8 / 1024^3) of prepared input data in memory
 # without accounting for overhead from data structures.
 # For the MNIST test dataset, 50000 corresponds to 46 GB of prepared input data.
 # You need at least 8GB RAM to run this benchmark.
