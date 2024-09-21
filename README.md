@@ -1,4 +1,5 @@
-# Tsetlin Machine: a new approach in Machine Learning
+# Tsetlin Machine: A Breath of Fresh Air in Machine Learning
+
 
 > *“Speed is the most important feature.”*
 
