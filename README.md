@@ -1,4 +1,4 @@
-# Tsetlin Machine
+# Tsetlin Machine: a new approach in Machine Learning
 
 > *“Speed is the most important feature.”*
 
