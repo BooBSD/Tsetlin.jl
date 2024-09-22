@@ -38,7 +38,7 @@ x_train, y_train = unzip([MNIST(:train)...])
 x_test, y_test = unzip([MNIST(:test)...])
 ```
 
-Booleanizing input data:
+Booleanizing input data (2 bits per pixel):
 
 ```julia
 x_train = [TMInput(vec([
