@@ -647,7 +647,15 @@ function benchmark(tm::AbstractTMClassifier, X::Vector{TMInput}, Y::Vector, loop
     GC.gc()
     prepare_time = @elapsed begin
         # Permutate in random order
-        perm = vcat((Random.shuffle(1:length(Y)) for _ in 1:loops)...)
+        len = length(Y)
+        perm = Vector{Int32}(undef, len * loops)
+        i::Int64 = 0
+        @inbounds @fastmath for _ in 1:loops
+            @inbounds @fastmath for r in Random.shuffle(UnitRange{Int32}(1:len))
+                i += 1
+                perm[i] = r
+            end
+        end
         # Multiply X and Y by loops times
         if batch
             X = batches(X[perm])
