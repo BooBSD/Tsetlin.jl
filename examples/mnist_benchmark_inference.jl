@@ -8,14 +8,12 @@ catch LoadError
 end
 
 using MLDatasets: MNIST
-using .Tsetlin: TMInput, benchmark, load, unzip
+using .Tsetlin: TMInput, benchmark, load, unzip, booleanize
 
 x_test, y_test = unzip([MNIST(:test)...])
 
-# Booleanization
-x_test = [TMInput([
-    x .> 0.25;
-]) for x in x_test]
+# Booleanizing input data (1 bit per pixel):
+x_test = [booleanize(x, 0.25) for x in x_test]
 
 # Convert y_test to the Int8 type to save memory
 y_test = Int8.(y_test)

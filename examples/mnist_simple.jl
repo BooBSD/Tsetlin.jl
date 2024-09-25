@@ -8,7 +8,7 @@ catch LoadError
 end
 
 using MLDatasets: MNIST, FashionMNIST
-using .Tsetlin: TMInput, TMClassifier, train!, combine, benchmark, save, load, optimize!, unzip
+using .Tsetlin: TMInput, TMClassifier, train!, combine, benchmark, save, load, optimize!, unzip, booleanize
 
 
 x_train, y_train = unzip([MNIST(:train)...])
@@ -16,17 +16,10 @@ x_test, y_test = unzip([MNIST(:test)...])
 # x_train, y_train = unzip([FashionMNIST(:train)...])
 # x_test, y_test = unzip([FashionMNIST(:test)...])
 
-# Booleanization
-x_train = [TMInput([
-    x .> 0;
-    x .> 0.33;
-    x .> 0.66;
-]) for x in x_train]
-x_test = [TMInput([
-    x .> 0;
-    x .> 0.33;
-    x .> 0.66;
-]) for x in x_test]
+# Booleanizing input data (3 bits per pixel):
+x_train = [booleanize(x, 0, 0.33, 0.66) for x in x_train]
+x_test = [booleanize(x, 0, 0.33, 0.66) for x in x_test]
+
 
 # Convert y_train and y_test to the Int8 type to save memory
 y_train = Int8.(y_train)

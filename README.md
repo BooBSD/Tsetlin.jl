@@ -32,7 +32,7 @@ Importing the necessary functions and MNIST dataset:
 
 ```julia
 using MLDatasets: MNIST
-using .Tsetlin: TMInput, TMClassifier, train!, predict, accuracy, save, load, unzip
+using .Tsetlin: TMInput, TMClassifier, train!, predict, accuracy, save, load, unzip, booleanize
 
 x_train, y_train = unzip([MNIST(:train)...])
 x_test, y_test = unzip([MNIST(:test)...])
@@ -41,15 +41,8 @@ x_test, y_test = unzip([MNIST(:test)...])
 Booleanizing input data (2 bits per pixel):
 
 ```julia
-x_train = [TMInput([
-    x .> 0;
-    x .> 0.5;
-]) for x in x_train]
-x_test = [TMInput([
-    x .> 0;
-    x .> 0.5;
-]) for x in x_test]
-
+x_train = [booleanize(x, 0, 0.5) for x in x_train]
+x_test = [booleanize(x, 0, 0.5) for x in x_test]
 ```
 
 There are some different hyperparameters compared to the [Vanilla Tsetlin Machine](https://github.com/cair/tmu).

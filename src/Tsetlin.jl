@@ -122,6 +122,11 @@ Base.size(x::TMInput)::Tuple{Int64} = size(x.x)
 Base.getindex(x::TMInput, i::Int)::Bool = x.x[i]
 
 
+function booleanize(x::AbstractArray{Float32}, thresholds::Number...)::TMInput
+    return TMInput(vcat((x .> t for t in thresholds)...))
+end
+
+
 function bits_2_word(X::Vector{TMInput}, j::Int64, size::Int64)::UInt64
     ex::UInt64 = zero(UInt64)
     @inbounds for i in 1:size
