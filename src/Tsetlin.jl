@@ -122,7 +122,7 @@ Base.size(x::TMInput)::Tuple{Int64} = size(x.x)
 Base.getindex(x::TMInput, i::Int)::Bool = x.x[i]
 
 
-function poly_2_eval(X::Vector{TMInput}, j::Int64, size::Int64)::UInt64
+function bits_2_word(X::Vector{TMInput}, j::Int64, size::Int64)::UInt64
     ex::UInt64 = zero(UInt64)
     @inbounds for i in 1:size
         ex *= 2
@@ -145,9 +145,9 @@ struct TMInputBatch <: AbstractTMInput
     function TMInputBatch(X::Vector{TMInput})
         @assert 1 <= length(X) <= 64 "Size of input Vector must be in 1..64."
         if length(X) == 64
-            return new([poly_2_eval(X, j, 64) for j in 1:length(X[1])], 64)
+            return new([bits_2_word(X, j, 64) for j in 1:length(X[1])], 64)
         else
-            return new([poly_2_eval(X, j, length(X) < 64 ? length(X) : 64) for j in 1:length(X[1])], length(X))
+            return new([bits_2_word(X, j, length(X) < 64 ? length(X) : 64) for j in 1:length(X[1])], length(X))
         end
     end
 end
