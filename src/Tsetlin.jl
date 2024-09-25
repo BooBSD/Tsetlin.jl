@@ -640,29 +640,29 @@ function combine(tms, k::Int64, x_test::Vector, y_test::Vector; algo::Symbol=:me
 end
 
 
-function benchmark(tm::AbstractTMClassifier, X::Vector{TMInput}, Y::Vector, loops::Int64; batch::Bool=false, deep_copy::Bool=false, warmup::Bool=true)
+function benchmark(tm::AbstractTMClassifier, X::Vector{TMInput}, Y::Vector, loops::Int64; batch::Bool=true, warmup::Bool=true)
     @printf("CPU: %s\n", Sys.cpu_info()[1].model)
     @printf("Running in %s threads.\n", nthreads())
     print("Preparing input data for benchmark... ")
     GC.gc()
     prepare_time = @elapsed begin
         # Permutate in random order
-        perm = Random.shuffle(1:length(Y) * loops)
+        perm = vcat((Random.shuffle(1:length(Y)) for _ in 1:loops)...)
         # Multiply X and Y by loops times
-        if deep_copy && !batch
-            X = vcat((deepcopy(X) for _ in 1:loops)...)[perm]
-            Y = vcat((deepcopy(Y) for _ in 1:loops)...)[perm]
-        else
-            X = vcat((X for _ in 1:loops)...)[perm]
-            Y = vcat((Y for _ in 1:loops)...)[perm]
-        end
         if batch
-            X = batches(X)
+            X = batches(X[perm])
+        else
+            _X::Vector{TMInput} = Vector{TMInput}(undef, length(perm))
+            @threads for i in eachindex(_X)
+                _X[i] = deepcopy(X[perm[i]])
+            end
+            X = _X
         end
+        Y = Y[perm]
     end
     @printf("Done. Elapsed %.3f seconds.\n", prepare_time)
     GC.gc()
-    X_size = Base.summarysize(X)
+    X_size = Base.summarysize(X[1]) * length(X)
     if warmup
         print("Warm-up started... ")
         warmup_time = @elapsed begin
