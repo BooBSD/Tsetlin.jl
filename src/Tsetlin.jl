@@ -129,7 +129,7 @@ function poly_2_eval(X::Vector{TMInput}, j::Int64, size::Int64)::UInt64
         ex += X[i][j]
     end
     if size < 64
-        @inbounds @fastmath @simd for i in size+1:64
+        @inbounds for i in size+1:64
             ex *= 2
             ex += true
         end
