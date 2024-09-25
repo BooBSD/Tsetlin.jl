@@ -100,8 +100,8 @@ abstract type AbstractTMInput <: AbstractVector{Bool} end
 # struct TMInput <: AbstractTMInput
 #     x::Vector{Bool}
 
-#     function TMInput(x::Vector{Bool})
-#         return new(x)
+#     function TMInput(x::AbstractArray{Bool})
+#         return new(vec(x))
 #     end
 # end
 
@@ -112,8 +112,8 @@ abstract type AbstractTMInput <: AbstractVector{Bool} end
 struct TMInput <: AbstractTMInput
     x::BitVector
 
-    function TMInput(x::Vector{Bool})
-        return new(BitVector(x))
+    function TMInput(x::AbstractArray{Bool})
+        return new(BitVector(vec(x)))
     end
 end
 

@@ -13,9 +13,9 @@ using .Tsetlin: TMInput, benchmark, load, unzip
 x_test, y_test = unzip([MNIST(:test)...])
 
 # Booleanization
-x_test = [TMInput(vec([
-    [x > 0.25 ? true : false for x in i];
-])) for i in x_test]
+x_test = [TMInput([
+    x .> 0.25;
+]) for x in x_test]
 
 # Convert y_test to the Int8 type to save memory
 y_test = Int8.(y_test)

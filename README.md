@@ -41,14 +41,15 @@ x_test, y_test = unzip([MNIST(:test)...])
 Booleanizing input data (2 bits per pixel):
 
 ```julia
-x_train = [TMInput(vec([
-    [x > 0 ? true : false for x in i];
-    [x > 0.5 ? true : false for x in i];
-])) for i in x_train]
-x_test = [TMInput(vec([
-    [x > 0 ? true : false for x in i];
-    [x > 0.5 ? true : false for x in i];
-])) for i in x_test]
+x_train = [TMInput([
+    x .> 0;
+    x .> 0.5;
+]) for x in x_train]
+x_test = [TMInput([
+    x .> 0;
+    x .> 0.5;
+]) for x in x_test]
+
 ```
 
 There are some different hyperparameters compared to the [Vanilla Tsetlin Machine](https://github.com/cair/tmu).
