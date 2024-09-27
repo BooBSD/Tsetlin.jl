@@ -60,4 +60,4 @@ optimize!(tm, x_train)
 save(tm, "/tmp/tm_optimized.tm")
 tm_opt = load("/tmp/tm_optimized.tm")
 
-benchmark(tm_opt, x_test, y_test, 2000, batch=true, warmup=true, deep_copy=true)
+benchmark(tm_opt, x_test, y_test, 2000, batch=true, warmup=true)
