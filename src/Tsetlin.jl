@@ -131,7 +131,7 @@ function bits_2_word(X::Vector{TMInput}, j::Int64, size::Int64)::UInt64
     ex::UInt64 = zero(UInt64)
     @inbounds for i in 1:size
         ex *= 2
-        ex += X[i][j]
+        ex += X[i].x[j]
     end
     if size < 64
         @inbounds for i in size+1:64
@@ -181,12 +181,12 @@ end
 
 function check_clause(x::TMInput, literals::Vector{UInt16}, literals_inverted::Vector{UInt16})::Bool
     @inbounds for i in eachindex(literals)
-        if !x[literals[i]]
+        if !x.x[literals[i]]
             return false
         end
     end
     @inbounds for i in eachindex(literals_inverted)
-        if x[literals_inverted[i]]
+        if x.x[literals_inverted[i]]
             return false
         end
     end
@@ -197,10 +197,10 @@ end
 function check_clause(x::TMInputBatch, literals::Vector{UInt16}, literals_inverted::Vector{UInt16})::UInt64
     b::UInt64 = typemin(UInt64)
     @inbounds for i in eachindex(literals)
-        b |= ~x[literals[i]]
+        b |= ~x.x[literals[i]]
     end
     @inbounds for i in eachindex(literals_inverted)
-        b |= x[literals_inverted[i]]
+        b |= x.x[literals_inverted[i]]
     end
     return b
 end
