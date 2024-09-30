@@ -8,7 +8,7 @@
 The Tsetlin Machine library, with zero external dependencies, performs blazingly fast.
 Over **180 million** MNIST predictions per second, with a throughput of **17 GB/s**, were achieved on a desktop CPU.
 
-<img width="882" alt="Tsetlin Machine performance benchmark" src="https://github.com/user-attachments/assets/bad959e3-67a4-401c-85f5-5f97d3415dbf">
+<img width="882" alt="Tsetlin Machine performance benchmark" src="https://github.com/user-attachments/assets/be8710b4-7196-4067-bde6-6eb0e4c68d8c">
 
 Key features
 ------------
