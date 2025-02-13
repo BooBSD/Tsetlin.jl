@@ -738,4 +738,17 @@ function diff_count(tm::AbstractTMClassifier)::Tuple{Int64, Int64, Int64, Int64,
     return count, length(union(pos, neg)), length(intersect(pos, neg)), length(pos) - length(Set(pos)), length(neg) - length(Set(neg))
 end
 
+
+function transpose(tm::TMClassifierCompiled; algo::Symbol=:join)::TMClassifierCompiled
+    @assert algo == :join
+    @assert iseven(tm.clauses_num)
+    tmc = TMClassifierCompiled(length(tm.clauses) * 2, tm.T, tm.R, tm.L)
+    for cls in 1:Int(tm.clauses_num / 2)
+        tmc.clauses[cls] = TATeamCompiled(length(tm.clauses) * 2)
+        tmc.clauses[cls].positive_included_literals = [ta.positive_included_literals[cls] for (_, ta) in tm.clauses]
+        tmc.clauses[cls].negative_included_literals = [ta.negative_included_literals[cls] for (_, ta) in tm.clauses]
+    end
+    return tmc
+end
+
 end # module
