@@ -484,7 +484,7 @@ function compile(tm::TMClassifier; verbose::Int=0)::TMClassifierCompiled
         neg_inv_sum = sum(neg_inv)
         total = (pos_sum + neg_sum + pos_inv_sum + neg_inv_sum)
         println("Included literals:")
-        @printf("  Positive: %s, Negative: %s, Positive Inverted: %s, Negative Inverted: %s, Total: %s, Per clause: %.2f\n", pos_sum, neg_sum, pos_inv_sum, neg_inv_sum, total, total / (length(tm.clauses) * tm.clauses_num))
+        @printf("  Positive: %s, Negative: %s, Positive Inverted: %s, Negative Inverted: %s, Total: %s, Per clause: %.2f\n", pos_sum, neg_sum, pos_inv_sum, neg_inv_sum, total, total / (length(tm.clauses) * tm.clauses_num * 2))
         @printf("  Positive min: %s, max: %s, mean: %.2f, median: %.2f\n", minimum(pos), maximum(pos), mean(pos), median(pos))
         @printf("  Negative min: %s, max: %s, mean: %.2f, median: %.2f\n", minimum(neg), maximum(neg), mean(neg), median(neg))
         @printf("  Positive Inverted min: %s, max: %s, mean: %.2f, median: %.2f\n", minimum(pos_inv), maximum(pos_inv), mean(pos_inv), median(pos_inv))
