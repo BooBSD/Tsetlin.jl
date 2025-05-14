@@ -28,20 +28,20 @@ x_test = [booleanize(x, 0, 0.33, 0.66) for x in x_test]
 y_train = Int8.(y_train)
 y_test = Int8.(y_test)
 
-const CLAUSES = 128
-const T = 4
-const S = 24
-const L = 12
+CLAUSES = 128
+T = 4
+S = 24
+L = 12
 
-# const CLAUSES = 512
-# const T = 16  # 16
-# const S = 30
-# const L = 12  # 10
+# CLAUSES = 512
+# T = 16
+# S = 30
+# L = 12
 
-# const CLAUSES = 80
-# const T = 3
-# const S = 15
-# const L = 6
+# CLAUSES = 80
+# T = 3
+# S = 15
+# L = 6
 
 const EPOCHS = 2000
 const best_tms_size = 500
