@@ -19,7 +19,7 @@ x_test = [booleanize(x, 0.25) for x in x_test]
 y_test = Int8.(y_test)
 
 # Load the pretrained model
-tm_opt = load("./models/tm_optimized_84.tm")
+tm_opt = load("./models/tm_optimized_80.tm")
 
 # Be careful; using swap will drastically decrease benchmark performance!
 # Please close all other programs such as web browsers and monitor the available memory.

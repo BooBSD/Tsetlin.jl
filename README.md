@@ -6,7 +6,7 @@
 *Fred Wilson*
 
 The Tsetlin Machine library, with zero external dependencies, performs blazingly fast.
-~**190 million** MNIST predictions per second, with a throughput of **17.4 GB/s**, were achieved on a desktop CPU.
+Over **200 million** MNIST predictions per second, with a throughput of **19 GB/s**, were achieved on a desktop CPU.
 
 <img width="882" alt="Tsetlin Machine performance benchmark" src="https://github.com/user-attachments/assets/6a6924a6-3ae3-43d0-abec-40245372f935" />
 
@@ -46,25 +46,23 @@ x_test = [booleanize(x, 0, 0.5) for x in x_test]
 ```
 
 There are some different hyperparameters compared to the [Vanilla Tsetlin Machine](https://github.com/cair/tmu).
-The hyperparameter `R` is a float in the range of `0.0` to `1.0`.
-To get the actual `R` from the Vanilla `S` parameter, use the following formula: `R = S / (S + 1)`.
 The hyperparameter `L` limits the number of included literals in a clause.
 `best_tms_size` is the number of the best TM models collected during the training process.
 After training, you can save this ensemble of models to your drive or increase accuracy by using Binomial Combinatorial Merge with the `combine()` function.
 
 ```julia
-const EPOCHS = 1000
-const CLAUSES = 2048
-const T = 32
-const R = 0.94
-const L = 12
-const best_tms_size = 500
+EPOCHS = 1000
+CLAUSES = 512
+T = 16
+S = 30
+L = 12
+best_tms_size = 500
 ```
 
 Training the Tsetlin Machine over 1000 epochs and saving the best TM model to disk:
 
 ```julia
-tm = TMClassifier{eltype(y_test)}(CLAUSES, T, R, L=L, states_num=256, include_limit=128)
+tm = TMClassifier{eltype(y_test)}(CLAUSES, T, S, L=L, states_num=256, include_limit=220)
 tms = train!(tm, x_train, y_train, x_test, y_test, EPOCHS, best_tms_size=best_tms_size, best_tms_compile=true, shuffle=true, batch=true)
 save(tms[1][1], "/tmp/tm_best.tm")
 ```
@@ -81,11 +79,11 @@ How to run examples
 
 0. Make sure that you have installed the latest version of the [Julia language](https://julialang.org/downloads/).
 1. Go to the examples directory: `cd ./examples`
-2. Run `julia --project=. -O3 -t 32 --gcthreads=32,1 mnist_simple.jl` where `32` is the number of your logical CPU cores.
+2. Run `julia --project=. -O3 -t 32 mnist.jl` where `32` is the number of your logical CPU cores.
 
 Benchmark
 ---------
-The maximum MNIST inference speed achieved is **189 million** predictions per second (with a throughput of **17.4 GB/s**) in batch mode on a Ryzen 7950X3D desktop CPU, utilizing 32 threads.
+The maximum MNIST inference speed achieved is **208 million** predictions per second (with a throughput of **19.1 GB/s**) in batch mode on a Ryzen 7950X3D desktop CPU, utilizing 32 threads.
 
 Trained and optimized models can be found in `./examples/models/`.
 
@@ -94,7 +92,6 @@ How to run MNIST inference benchmark:
 0. Please close all other programs such as web browsers, antivirus software, torrent clients, music players, etc.
 1. Go to the examples directory: `cd ./examples`
 2. Run `julia --project=. -O3 -t 32 mnist_benchmark_inference.jl` where `32` is the number of your logical CPU cores.
-
 
 
 [![Build Status](https://github.com/BooBSD/Tsetlin.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/BooBSD/Tsetlin.jl/actions/workflows/CI.yml?query=branch%3Amain)

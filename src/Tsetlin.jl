@@ -52,15 +52,16 @@ end
 mutable struct TMClassifier{ClassType} <: AbstractTMClassifier
     clauses_num::Int64
     T::Int64
-    R::Float64
+    S::Int64
+    s::Int64
     L::Int64
     const include_limit::Int64
     const state_min::Int64
     const state_max::Int64
     const clauses::Dict{ClassType, TATeam}
 
-    function TMClassifier{ClassType}(clauses_num::Int64, T::Int64, R::Float64; states_num::Int64=256, include_limit::Int64=128, L::Int64=16) where ClassType
-        return new{ClassType}(clauses_num, T, R, L, include_limit, typemin(UInt8), states_num - 1, Dict())
+    function TMClassifier{ClassType}(clauses_num::Int64, T::Int64, S::Int64; states_num::Int64=256, include_limit::Int64=128, L::Int64=16) where ClassType
+        return new{ClassType}(clauses_num, T, S, 0, L, include_limit, typemin(UInt8), states_num - 1, Dict())
     end
 end
 
@@ -84,12 +85,13 @@ end
 struct TMClassifierCompiled{ClassType} <: AbstractTMClassifier
     clauses_num::Int64
     T::Int64
-    R::Float64
+    S::Int64
+    s::Int64
     L::Int64
     clauses::Dict{ClassType, TATeamCompiled}
 
-    function TMClassifierCompiled{ClassType}(clauses_num::Int64, T::Int64, R::Float64, L::Int64) where ClassType
-        return new{ClassType}(clauses_num, T, R, L, Dict())
+    function TMClassifierCompiled{ClassType}(clauses_num::Int64, T::Int64, S::Int64, s::Int64, L::Int64) where ClassType
+        return new{ClassType}(clauses_num, T, S, s, L, Dict())
     end
 end
 
@@ -173,6 +175,7 @@ end
 
 
 function initialize!(tm::TMClassifier, X::Vector{TMInput}, Y::Vector)
+    tm.s = round(Int, length(first(X)) / tm.S)
     for cls in collect(Set(Y))
         tm.clauses[cls] = TATeam(length(first(X)), tm.clauses_num, tm.include_limit, tm.state_min, tm.state_max)
     end
@@ -233,7 +236,7 @@ function feedback!(tm::TMClassifier, ta::TATeam, x::TMInput, clauses1::Matrix{UI
     @inbounds for (j, (c, ci)) in enumerate(zip(eachcol(clauses1), eachcol(clauses_inverted1)))
         if (rand() < update)
             if check_clause(x, literals1[j], literals_inverted1[j])
-                if (length(literals1[j]) + length(literals_inverted1[j]) <= tm.L)
+                if (length(literals1[j]) + length(literals_inverted1[j])) <= tm.L
                     @inbounds for i = 1:ta.clause_size
                         if (x.x[i] == true) && (c[i] < ta.state_max)
                             c[i] += one(UInt8)
@@ -244,19 +247,21 @@ function feedback!(tm::TMClassifier, ta::TATeam, x::TMInput, clauses1::Matrix{UI
                     end
                 end
                 @inbounds for i = 1:ta.clause_size
-                    if (rand() > tm.R) && (x.x[i] == false) && (c[i] < ta.include_limit) && (c[i] > ta.state_min)
+                    if (x.x[i] == false) && (c[i] < ta.include_limit) && (c[i] > ta.state_min)
                         c[i] -= one(UInt8)
                     end
-                    if (rand() > tm.R) && (x.x[i] == true) && (ci[i] < ta.include_limit) && (ci[i] > ta.state_min)
+                    if (x.x[i] == true) && (ci[i] < ta.include_limit) && (ci[i] > ta.state_min)
                         ci[i] -= one(UInt8)
                     end
                 end
             else
-                @inbounds for i = 1:ta.clause_size
-                    if (rand() > tm.R) && (c[i] > ta.state_min)
+                @inbounds for _ in 1:tm.s
+                    i = rand(1:ta.clause_size)  # Here's one random only.
+                    if c[i] > ta.state_min
                         c[i] -= one(UInt8)
                     end
-                    if (rand() > tm.R) && (ci[i] > ta.state_min)
+                    i = rand(1:ta.clause_size)  # Here's one random only.
+                    if ci[i] > ta.state_min
                         ci[i] -= one(UInt8)
                     end
                 end
@@ -270,10 +275,10 @@ function feedback!(tm::TMClassifier, ta::TATeam, x::TMInput, clauses1::Matrix{UI
         if (rand() < update)
             if check_clause(x, literals2[j], literals_inverted2[j])
                 @inbounds for i = 1:ta.clause_size
-                    if (rand() <= tm.R) && (x.x[i] == false) && (c[i] < ta.include_limit)
+                    if (x.x[i] == false) && (c[i] < ta.include_limit)
                         c[i] += one(UInt8)
                     end
-                    if (rand() <= tm.R) && (x.x[i] == true) && (ci[i] < ta.include_limit)
+                    if (x.x[i] == true) && (ci[i] < ta.include_limit)
                         ci[i] += one(UInt8)
                     end
                 end
@@ -390,6 +395,7 @@ function train!(tm::TMClassifier, x::TMInput, y::Any; shuffle::Bool=true)
     else
         classes = keys(tm.clauses)
     end
+#    feedback!(tm, tm.clauses[y], x, tm.clauses[y].positive_clauses, tm.clauses[y].positive_clauses_inverted, tm.clauses[y].negative_clauses, tm.clauses[y].negative_clauses_inverted, tm.clauses[y].positive_included_literals, tm.clauses[y].positive_included_literals_inverted, tm.clauses[y].negative_included_literals, tm.clauses[y].negative_included_literals_inverted, true)
     for cls in classes
         if cls != y
             feedback!(tm, tm.clauses[y], x, tm.clauses[y].positive_clauses, tm.clauses[y].positive_clauses_inverted, tm.clauses[y].negative_clauses, tm.clauses[y].negative_clauses_inverted, tm.clauses[y].positive_included_literals, tm.clauses[y].positive_included_literals_inverted, tm.clauses[y].negative_included_literals, tm.clauses[y].negative_included_literals_inverted, true)
@@ -418,9 +424,12 @@ function train!(tm::TMClassifier, x_train::Vector, y_train::Vector, x_test::Vect
     if batch
         x_test = batches(x_test)
     end
+    if length(tm.clauses) == 0
+        initialize!(tm, x_train, y_train)
+    end
     if verbose > 0
         println("\nRunning in $(nthreads()) threads.")
-        println("Accuracy over $(epochs) epochs (Clauses: $(tm.clauses_num), T: $(tm.T), R: $(tm.R), L: $(tm.L), states_num: $(tm.state_max + 1), include_limit: $(tm.include_limit)):\n")
+        println("Accuracy over $(epochs) epochs (Clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), states_num: $(tm.state_max + 1), include_limit: $(tm.include_limit)):\n")
     end
     best_tms = Tuple{AbstractTMClassifier, Float64}[]
     all_time = @elapsed begin
@@ -438,7 +447,7 @@ function train!(tm::TMClassifier, x_train::Vector, y_train::Vector, x_test::Vect
         end
     end
     if verbose > 0
-        println("\nDone. $(epochs) epochs (Clauses: $(tm.clauses_num), T: $(tm.T), R: $(tm.R), L: $(tm.L), states_num: $(tm.state_max + 1), include_limit: $(tm.include_limit)).")
+        println("\nDone. $(epochs) epochs (Clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), states_num: $(tm.state_max + 1), include_limit: $(tm.include_limit)).")
         elapsed = Time(0) + Second(floor(Int, all_time))
         @printf("Time elapsed: %s. Best accuracy was: %.2f%%.\n\n", elapsed, best_tms[1][2] * 100)
     end
@@ -455,7 +464,7 @@ function compile(tm::TMClassifier; verbose::Int=0)::TMClassifierCompiled
         neg_inv = []
     end
         all_time = @elapsed begin
-        tmc = TMClassifierCompiled{class_type(tm)}(tm.clauses_num, tm.T, tm.R, tm.L)
+        tmc = TMClassifierCompiled{class_type(tm)}(tm.clauses_num, tm.T, tm.S, tm.s, tm.L)
         for (cls, ta) in tm.clauses
             tmc.clauses[cls] = TATeamCompiled(tm.clauses_num)
             for (j, (c, ci)) in enumerate(zip(eachcol(ta.positive_clauses), eachcol(ta.positive_clauses_inverted)))
