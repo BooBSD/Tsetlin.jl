@@ -99,18 +99,6 @@ end
 abstract type AbstractTMInput <: AbstractVector{Bool} end
 
 
-# struct TMInput <: AbstractTMInput
-#     x::Vector{Bool}
-
-#     function TMInput(x::AbstractArray{Bool})
-#         return new(vec(x))
-#     end
-# end
-
-# Base.IndexStyle(::Type{<:TMInput}) = IndexLinear()
-# Base.size(x::TMInput)::Tuple{Int64} = size(x.x)
-# Base.getindex(x::TMInput, i::Int)::Bool = x.x[i]
-
 struct TMInput <: AbstractTMInput
     x::BitVector
 
