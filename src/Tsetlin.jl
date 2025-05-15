@@ -417,6 +417,7 @@ function train!(tm::TMClassifier, x_train::Vector, y_train::Vector, x_test::Vect
     end
     if verbose > 0
         println("\nRunning in $(nthreads()) threads.")
+        println("Input vector size: $(length(x_train[1])) bits.")
         println("Accuracy over $(epochs) epochs (Clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), states_num: $(tm.state_max + 1), include_limit: $(tm.include_limit)):\n")
     end
     best_tms = Tuple{AbstractTMClassifier, Float64}[]
@@ -645,6 +646,7 @@ end
 function benchmark(tm::AbstractTMClassifier, X::Vector{TMInput}, Y::Vector, loops::Int64; batch::Bool=true, warmup::Bool=true)
     @printf("CPU: %s\n", Sys.cpu_info()[1].model)
     @printf("Running in %s threads.\n", nthreads())
+    println("Input vector size: $(length(X[1])) bits.")
     print("Preparing input data for benchmark... ")
     GC.gc()
     prepare_time = @elapsed begin
