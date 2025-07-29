@@ -417,7 +417,7 @@ function train!(tm::TMClassifier, x_train::Vector, y_train::Vector, x_test::Vect
     end
     if verbose > 0
         println("\nRunning in $(nthreads()) threads.")
-        println("Input vector size: $(length(x_train[1])) bits.")
+        println("Input vector size: $(length(x_train[1])) bits. Training dataset size: $(length(y_train)). Testing dataset size: $(length(y_test)).")
         println("Accuracy over $(epochs) epochs (Clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), states_num: $(tm.state_max + 1), include_limit: $(tm.include_limit)):\n")
     end
     best_tms = Tuple{AbstractTMClassifier, Float64}[]
