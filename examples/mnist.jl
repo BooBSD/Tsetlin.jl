@@ -43,8 +43,8 @@ L = 12
 # S = 15
 # L = 6
 
-const EPOCHS = 2000
-const best_tms_size = 500
+EPOCHS = 2000
+best_tms_size = 500
 
 # Training the TM model
 tm = TMClassifier{eltype(y_train)}(CLAUSES, T, S, L=L, states_num=256, include_limit=220)
