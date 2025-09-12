@@ -40,10 +40,10 @@ mutable struct TATeam <: AbstractTATeam
         negative_clauses = fill(UInt8(include_limit - 1), clause_size, floor(Int, clauses_num / 2))
         positive_clauses_inverted = fill(UInt8(include_limit - 1), clause_size, floor(Int, clauses_num / 2))
         negative_clauses_inverted = fill(UInt8(include_limit - 1), clause_size, floor(Int, clauses_num / 2))
-        positive_included_literals = fill([], floor(Int, clauses_num / 2))
-        negative_included_literals = fill([], floor(Int, clauses_num / 2))
-        positive_included_literals_inverted = fill([], floor(Int, clauses_num / 2))
-        negative_included_literals_inverted = fill([], floor(Int, clauses_num / 2))
+        positive_included_literals = [UInt16[] for _ in 1:floor(Int, clauses_num / 2)]
+        negative_included_literals = [UInt16[] for _ in 1:floor(Int, clauses_num / 2)]
+        positive_included_literals_inverted = [UInt16[] for _ in 1:floor(Int, clauses_num / 2)]
+        negative_included_literals_inverted = [UInt16[] for _ in 1:floor(Int, clauses_num / 2)]
         return new(include_limit, state_min, state_max, positive_clauses, negative_clauses, positive_clauses_inverted, negative_clauses_inverted, positive_included_literals, negative_included_literals, positive_included_literals_inverted, negative_included_literals_inverted, clause_size)
     end
 end
@@ -73,10 +73,10 @@ mutable struct TATeamCompiled <: AbstractTATeam
     negative_included_literals_inverted::Vector{Vector{UInt16}}
 
     function TATeamCompiled(clauses_num::Int64)
-        positive_included_literals = fill([], floor(Int, clauses_num / 2))
-        negative_included_literals = fill([], floor(Int, clauses_num / 2))
-        positive_included_literals_inverted = fill([], floor(Int, clauses_num / 2))
-        negative_included_literals_inverted = fill([], floor(Int, clauses_num / 2))
+        positive_included_literals = [UInt16[] for _ in 1:floor(Int, clauses_num / 2)]
+        negative_included_literals = [UInt16[] for _ in 1:floor(Int, clauses_num / 2)]
+        positive_included_literals_inverted = [UInt16[] for _ in 1:floor(Int, clauses_num / 2)]
+        negative_included_literals_inverted = [UInt16[] for _ in 1:floor(Int, clauses_num / 2)]
         return new(positive_included_literals, negative_included_literals, positive_included_literals_inverted, negative_included_literals_inverted)
     end
 end
@@ -164,7 +164,7 @@ end
 
 function initialize!(tm::TMClassifier, X::Vector{TMInput}, Y::Vector)
     tm.s = round(Int, length(first(X)) / tm.S)
-    for cls in collect(Set(Y))
+    for cls in unique(Y)
         tm.clauses[cls] = TATeam(length(first(X)), tm.clauses_num, tm.include_limit, tm.state_min, tm.state_max)
     end
 end
@@ -569,10 +569,10 @@ function merge!(new_tm::TMClassifier, tms::TMClassifier...; algo::Symbol=:merge)
             clauses_num_half = size(new_tm.clauses[cls].positive_clauses, 2)
             new_tm.clauses_num = clauses_num_half * 2
 
-            new_tm.clauses[cls].positive_included_literals = fill([], floor(Int, clauses_num_half))
-            new_tm.clauses[cls].negative_included_literals = fill([], floor(Int, clauses_num_half))
-            new_tm.clauses[cls].positive_included_literals_inverted = fill([], floor(Int, clauses_num_half))
-            new_tm.clauses[cls].negative_included_literals_inverted = fill([], floor(Int, clauses_num_half))
+            new_tm.clauses[cls].positive_included_literals = [UInt16[] for _ in 1:floor(Int, clauses_num_half)]
+            new_tm.clauses[cls].negative_included_literals = [UInt16[] for _ in 1:floor(Int, clauses_num_half)]
+            new_tm.clauses[cls].positive_included_literals_inverted = [UInt16[] for _ in 1:floor(Int, clauses_num_half)]
+            new_tm.clauses[cls].negative_included_literals_inverted = [UInt16[] for _ in 1:floor(Int, clauses_num_half)]
         end
         @inbounds for (j, c) in enumerate(eachcol(new_tm.clauses[cls].positive_clauses))
             new_tm.clauses[cls].positive_included_literals[j] = [@inbounds i for i = 1:new_tm.clauses[cls].clause_size if c[i] >= new_tm.clauses[cls].include_limit]
@@ -594,15 +594,15 @@ function merge!(new_tm::TMClassifierCompiled, tms::TMClassifierCompiled...; algo
     @assert algo in (:merge, :join)
     @threads for cls in collect(keys(new_tm.clauses))
         if algo == :merge
-            new_tm.clauses[cls].positive_included_literals = [sort(collect(Set(vcat(ls...)))) for ls in zip((tm.clauses[cls].positive_included_literals for tm in tms)...)]
-            new_tm.clauses[cls].negative_included_literals = [sort(collect(Set(vcat(ls...)))) for ls in zip((tm.clauses[cls].negative_included_literals for tm in tms)...)]
-            new_tm.clauses[cls].positive_included_literals_inverted = [sort(collect(Set(vcat(ls...)))) for ls in zip((tm.clauses[cls].positive_included_literals_inverted for tm in tms)...)]
-            new_tm.clauses[cls].negative_included_literals_inverted = [sort(collect(Set(vcat(ls...)))) for ls in zip((tm.clauses[cls].negative_included_literals_inverted for tm in tms)...)]
+            new_tm.clauses[cls].positive_included_literals = [unique!(sort!(reduce(vcat, ls))) for ls in zip((tm.clauses[cls].positive_included_literals for tm in tms)...)]
+            new_tm.clauses[cls].negative_included_literals = [unique!(sort!(reduce(vcat, ls))) for ls in zip((tm.clauses[cls].negative_included_literals for tm in tms)...)]
+            new_tm.clauses[cls].positive_included_literals_inverted = [unique!(sort!(reduce(vcat, ls))) for ls in zip((tm.clauses[cls].positive_included_literals_inverted for tm in tms)...)]
+            new_tm.clauses[cls].negative_included_literals_inverted = [unique!(sort!(reduce(vcat, ls))) for ls in zip((tm.clauses[cls].negative_included_literals_inverted for tm in tms)...)]
         elseif algo == :join
-            new_tm.clauses[cls].positive_included_literals = sort(collect(Set(vcat((tm.clauses[cls].positive_included_literals for tm in tms)...))))
-            new_tm.clauses[cls].negative_included_literals = sort(collect(Set(vcat((tm.clauses[cls].negative_included_literals for tm in tms)...))))
-            new_tm.clauses[cls].positive_included_literals_inverted = sort(collect(Set(vcat((tm.clauses[cls].positive_included_literals_inverted for tm in tms)...))))
-            new_tm.clauses[cls].negative_included_literals_inverted = sort(collect(Set(vcat((tm.clauses[cls].negative_included_literals_inverted for tm in tms)...))))
+            new_tm.clauses[cls].positive_included_literals = unique!(sort!(reduce(vcat, (tm.clauses[cls].positive_included_literals for tm in tms))))
+            new_tm.clauses[cls].negative_included_literals = unique!(sort!(reduce(vcat, (tm.clauses[cls].negative_included_literals for tm in tms))))
+            new_tm.clauses[cls].positive_included_literals_inverted = unique!(sort!(reduce(vcat, (tm.clauses[cls].positive_included_literals_inverted for tm in tms))))
+            new_tm.clauses[cls].negative_included_literals_inverted = unique!(sort!(reduce(vcat, (tm.clauses[cls].negative_included_literals_inverted for tm in tms))))
         end
     end
 end
