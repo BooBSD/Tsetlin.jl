@@ -93,6 +93,3 @@ How to run MNIST inference benchmark:
 0. Please close all other programs such as web browsers, antivirus software, torrent clients, music players, etc.
 1. Go to the examples directory: `cd ./examples`
 2. Run `julia --project=. -O3 -t 32 mnist_benchmark_inference.jl` where `32` is the number of your logical CPU cores.
-
-
-[![Build Status](https://github.com/BooBSD/Tsetlin.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/BooBSD/Tsetlin.jl/actions/workflows/CI.yml?query=branch%3Amain)

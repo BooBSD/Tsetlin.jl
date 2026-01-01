@@ -1,10 +1,10 @@
 name = "Tsetlin"
 uuid = "b78f0e35-164d-4584-a784-bb370eedb54c"
 authors = ["Artem Hnilov"]
-version = "1.0.0-DEV"
+version = "0.1.0-DEV"
 
 [compat]
-julia = "1"
+julia = "1.12"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
