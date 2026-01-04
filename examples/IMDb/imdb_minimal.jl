@@ -42,4 +42,4 @@ save(tms[1][1], "/tmp/tm.tm")
 tm = load("/tmp/tm.tm")
 # Benchmark model
 # 135 corresponds to a 5GB input dataset. Feel free to adjust this number if you like.
-benchmark(tm, x_test, y_test, 135)
+benchmark(tm, x_test, y_test, 135, index=false)
