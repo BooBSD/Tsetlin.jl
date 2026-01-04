@@ -1,0 +1,5 @@
+keras==3.13.0
+tensorflow==2.20.0
+scikit-learn==1.8.0
+pandas==2.3.3
+kagglehub==0.3.13

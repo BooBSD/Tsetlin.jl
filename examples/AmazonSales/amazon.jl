@@ -19,7 +19,7 @@ S = 1000
 L = 50
 LF = 10
 
-EPOCHS = 100
+EPOCHS = 1000
 
 # Training the TM model
 tm = TMClassifier(x_train[1], y_train, CLAUSES, T, S, L=L, LF=LF, states_num=256, include_limit=200)

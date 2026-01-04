@@ -4,7 +4,7 @@
 - Some examples require dataset preparation scripts written in [Python](https://www.python.org/downloads/). To install the necessary dependencies, run the following command:
 
 ```shell
-pip install -r requirements.txt
+pip install -r examples/requirements.txt
 ```
 In *all* Julia examples, we use `-t 32`, which specifies the use of `32` logical CPU cores.
 Please adjust this parameter to match the actual number of logical cores available on your machine.
