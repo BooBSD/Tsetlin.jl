@@ -427,6 +427,15 @@ end
 
 
 # function train!(tm::TMClassifier{ClassType}, x::TMInput, y::ClassType; index::Bool=false) where ClassType
+#     cls = rand([c for c in keys(tm.clauses) if c != y])
+#     target = tm.clauses[y]
+#     opposite = tm.clauses[cls]
+#     feedback!(tm, target, x, target.positive_clauses, target.positive_clauses_inverted, target.negative_clauses, target.negative_clauses_inverted, target.positive_included_literals, target.positive_included_literals_inverted, target.negative_included_literals, target.negative_included_literals_inverted, target.positive_included_literals_sum, target.positive_included_literals_sum_clamp, target.negative_included_literals_sum, target.negative_included_literals_sum_clamp, target.positive_included_literals_idx, target.negative_included_literals_idx, true, index)
+#     feedback!(tm, opposite, x, opposite.negative_clauses, opposite.negative_clauses_inverted, opposite.positive_clauses, opposite.positive_clauses_inverted, opposite.negative_included_literals, opposite.negative_included_literals_inverted, opposite.positive_included_literals, opposite.positive_included_literals_inverted, opposite.negative_included_literals_sum, opposite.negative_included_literals_sum_clamp, opposite.positive_included_literals_sum, opposite.positive_included_literals_sum_clamp, opposite.negative_included_literals_idx, opposite.positive_included_literals_idx, false, index)
+# end
+
+
+# function train!(tm::TMClassifier{ClassType}, x::TMInput, y::ClassType; index::Bool=false) where ClassType
 #     c::Int64 = typemin(Int64)
 #     cls::ClassType = typemin(ClassType)
 #     @inbounds for (class, ta) in tm.clauses

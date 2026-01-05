@@ -5,6 +5,7 @@ using Base.Threads
 using Serialization
 using .Tsetlin: TMInput, TMClassifier, train!, predict, accuracy, save, load, compile
 
+
 CORPUS_URL = "https://raw.githubusercontent.com/BooBSD/char-rnn/refs/heads/patch-1/data/tinyshakespeare/input.txt"
 CORPUS_PATH = "/tmp/input.txt"
 TM_PATH = "/tmp/tm_text.tm"
