@@ -34,7 +34,7 @@ LF = 8192
 
 isfile(CORPUS_PATH) || download(CORPUS_URL, CORPUS_PATH)
 CORPUS = read(CORPUS_PATH)
-CORPUS_SIZE = 900000
+CORPUS_LENGTH = length(CORPUS)
 
 tokens = CORPUS |> unique |> sort # Sorted !!!!!!
 println("Characters: $(join(Char.(tokens)))\n")
@@ -158,7 +158,7 @@ function train()
         elapsed = @elapsed begin
             cnt = 0
             @threads for n in 1:SAMPLES_PER_EPOCH
-                start = rand(1:CORPUS_SIZE - CONTEXT_SIZE - 1)
+                start = rand(1:CORPUS_LENGTH - CONTEXT_SIZE - 1)
                 finish = rand(start:start + CONTEXT_SIZE - 1)
                 y = CORPUS[finish + 1]
                 # Balancing classes
@@ -178,12 +178,14 @@ function train()
 end
 
 
+# Dirty hack to force text generation starting from "ROLE:"
+PROMPT = "--\n\n"
+
 function sample()
     tm = load(TM_PATH)
     SUBSAMPLES = 21
     TOKENS_GENERATE = 10000
-    # Dirty hack to force text generation starting from "ROLE:"
-    prompt = "--\n\n"[max(end - CONTEXT_SIZE + 1, 1):end]
+    prompt = PROMPT[max(end - CONTEXT_SIZE + 1, 1):end]
     prompt_vector = [UInt8(t) for t in prompt]
     for n in 1:TOKENS_GENERATE
         con = @view(prompt_vector[max(end - CONTEXT_SIZE + 1, 1):end])
