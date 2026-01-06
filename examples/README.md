@@ -1,6 +1,6 @@
 ## How to Run Examples
 
-- Ensure that you have the latest version of the [Julia](https://julialang.org/downloads/) language installed.
+- Ensure that you have the latest version of the [Julia language](https://julialang.org/downloads/) installed.
 - Some examples require dataset preparation scripts written in [Python](https://www.python.org/downloads/). To install the necessary dependencies, run the following command:
 
 ```shell
