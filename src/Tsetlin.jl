@@ -6,8 +6,7 @@ using Dates
 using Random
 using Base.Threads
 using Serialization
-using Statistics: mean, median
-using Printf: @printf, @sprintf
+using Printf: @printf
 
 
 Base.exit_on_sigint(false)
