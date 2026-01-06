@@ -110,13 +110,13 @@ This implementation introduces some differences compared to the Vanilla Tsetlin 
   - `LF` — new hyperparameter that sets the number of literal misses allowed per clause.
 
 ```julia
-CLAUSES = 20
-T = 20
-S = 200
-L = 150
-LF = 75
+CLAUSES = 20   # Number of clauses per class
+T       = 20   # Voting threshold
+S       = 200  # Specificity
+L       = 150  # Maximum literals per clause
+LF      = 75   # Allowed failed literals per clause
 
-EPOCHS = 1000
+EPOCHS  = 1000 # Number of training epochs
 ```
 
 Train the model over 1000 epochs and save the compiled model to disk:
