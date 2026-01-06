@@ -104,7 +104,7 @@ x_test = [booleanize(x, 0, 0.5) for x in x_test]
 ```
 
 ### Hyperparameters
-This implementation introduces some differences compared to the Vanilla Tsetlin Machine:
+This implementation introduces some differences compared to the *Vanilla Tsetlin Machine*:
 
   - `L` — limits the number of included literals in a clause.
   - `LF` — new hyperparameter that sets the number of literal misses allowed per clause.
