@@ -84,13 +84,13 @@ And then I will be so.
 Introduction
 ------------
 
-Here is a quick *"Hello, World!"* example of a typical use case.
+Here is a quick *"Hello, World!"* example of a typical use case with the Tsetlin Machine.
 
-Importing the necessary functions and MNIST dataset:
+Importing the necessary functions and the MNIST dataset:
 
 ```julia
 using MLDatasets: MNIST
-using .Tsetlin: TMInput, TMClassifier, train!, predict, accuracy, save, load, unzip, booleanize, compile
+using .Tsetlin: TMInput, TMClassifier, train!, predict, accuracy, save, load, unzip, booleanize, compile, benchmark
 
 x_train, y_train = unzip([MNIST(:train)...])
 x_test, y_test = unzip([MNIST(:test)...])
@@ -105,7 +105,13 @@ x_test = [booleanize(x, 0, 0.5) for x in x_test]
 
 There are some different hyperparameters compared to the [Vanilla Tsetlin Machine](https://github.com/cair/tmu).
 The hyperparameter `L` limits the number of included literals in a clause.
-New hyperparameter `LF` that sets the number of literal misses allowed for the clause. 
+New hyperparameter `LF` that sets the number of literal misses allowed for the clause.
+
+### Hyperparameters
+This implementation introduces some differences compared to the Vanilla Tsetlin Machine:
+
+  - `L` — limits the number of included literals in a clause.
+  - `LF` — new hyperparameter that sets the number of literal misses allowed per clause.
 
 ```julia
 CLAUSES = 20
@@ -117,7 +123,7 @@ LF = 75
 EPOCHS = 1000
 ```
 
-Training the Tsetlin Machine over 1000 epochs and saving the last TM model to disk:
+Train the model over 1000 epochs and save the compiled model to disk:
 
 ```julia
 tm = TMClassifier(x_train[1], y_train, CLAUSES, T, S, L=L, LF=LF, states_num=256, include_limit=240)
@@ -125,14 +131,14 @@ train!(tm, x_train, y_train, x_test, y_test, EPOCHS, shuffle=true, index=false)
 save(compile(tm), "/tmp/tm_last.tm")
 ```
 
-Load the compiled Tsetlin Machine model and calculate the actual test accuracy:
+Loading the compiled model and evaluating accuracy:
 
 ```julia
 tm = load("/tmp/tm_last.tm")
 println(accuracy(predict(tm, x_test), y_test))
 ```
 
-Benchmark compiled model:
+Benchmarking the compiled model:
 
 ```julia
 benchmark(tm, x_test, y_test, 1000 * 4, warmup=true, index=false)
