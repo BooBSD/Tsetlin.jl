@@ -5,8 +5,8 @@
 
 *Fred Wilson*
 
-This repository provides an alternative Fuzzy-Pattern Tsetlin Machine implementation with zero external dependencies and blazingly fast performance.
-It achieves over **31 million** MNIST predictions per second at 98% accuracy, with a throughput of **4 GB/s** on a desktop CPU.
+This repository provides an alternative [Fuzzy-Pattern Tsetlin Machine](https://github.com/BooBSD/FuzzyPatternTM) implementation with zero external dependencies and blazingly fast performance.
+It achieves over **32 million** MNIST predictions per second at 98% accuracy, with a throughput of **4 GB/s** on a desktop CPU.
 
 
 Key features
