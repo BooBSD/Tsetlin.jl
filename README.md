@@ -90,7 +90,7 @@ Importing the necessary functions and MNIST dataset:
 
 ```julia
 using MLDatasets: MNIST
-using .Tsetlin: TMInput, TMClassifier, train!, predict, accuracy, save, load, unzip, booleanize
+using .Tsetlin: TMInput, TMClassifier, train!, predict, accuracy, save, load, unzip, booleanize, compile
 
 x_train, y_train = unzip([MNIST(:train)...])
 x_test, y_test = unzip([MNIST(:test)...])
@@ -105,31 +105,37 @@ x_test = [booleanize(x, 0, 0.5) for x in x_test]
 
 There are some different hyperparameters compared to the [Vanilla Tsetlin Machine](https://github.com/cair/tmu).
 The hyperparameter `L` limits the number of included literals in a clause.
-`best_tms_size` is the number of the best TM models collected during the training process.
-After training, you can save this ensemble of models to your drive or increase accuracy by using Binomial Combinatorial Merge with the `combine()` function.
+New hyperparameter `LF` that sets the number of literal misses allowed for the clause. 
 
 ```julia
+CLAUSES = 20
+T = 20
+S = 200
+L = 150
+LF = 75
+
 EPOCHS = 1000
-CLAUSES = 512
-T = 16
-S = 30
-L = 12
-best_tms_size = 500
 ```
 
-Training the Tsetlin Machine over 1000 epochs and saving the best TM model to disk:
+Training the Tsetlin Machine over 1000 epochs and saving the last TM model to disk:
 
 ```julia
-tm = TMClassifier{eltype(y_test)}(CLAUSES, T, S, L=L, states_num=256, include_limit=220)
-tms = train!(tm, x_train, y_train, x_test, y_test, EPOCHS, best_tms_size=best_tms_size, best_tms_compile=true, shuffle=true, batch=true)
-save(tms[1][1], "/tmp/tm_best.tm")
+tm = TMClassifier(x_train[1], y_train, CLAUSES, T, S, L=L, LF=LF, states_num=256, include_limit=240)
+train!(tm, x_train, y_train, x_test, y_test, EPOCHS, shuffle=true, index=false)
+save(compile(tm), "/tmp/tm_last.tm")
 ```
 
-Load the best Tsetlin Machine model and calculate the actual test accuracy:
+Load the compiled Tsetlin Machine model and calculate the actual test accuracy:
 
 ```julia
-tm = load("/tmp/tm_best.tm")
+tm = load("/tmp/tm_last.tm")
 println(accuracy(predict(tm, x_test), y_test))
+```
+
+Benchmark compiled model:
+
+```julia
+benchmark(tm, x_test, y_test, 1000 * 4, warmup=true, index=false)
 ```
 
 Examples
