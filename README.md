@@ -29,14 +29,13 @@ Quick Start
 
 > *Talk is cheap, show me the ~~code~~ some examples.*
 
-First, install the [Julia language](https://julialang.org) using the following command:
+First, install the [Julia language](https://julialang.org) by running the following command and following the installation instructions:
 
 ```shell
 curl -fsSL https://install.julialang.org | sh
 ```
 
-Follow the installation instructions.
-In the first terminal window, run the following command to train your model over many epochs:
+In the first terminal window, run the following command to train your model over multiple epochs:
 
 ```shell
 julia -t auto examples/TEXT/text.jl
@@ -48,7 +47,7 @@ In the second terminal window, run the same command after each training epoch to
 julia -t auto examples/TEXT/text.jl
 ```
 
-After 200+ epochs, you should see something like this:
+After 200+ epochs, you should see output similar to the following:
 
 ```text
 ROMEO:
