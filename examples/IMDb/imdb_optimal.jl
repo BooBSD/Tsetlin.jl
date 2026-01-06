@@ -42,4 +42,4 @@ EPOCHS = 20
 
 # Training the TM model
 tm = TMClassifier(x_train[1], y_train, CLAUSES, T, S, L=L, LF=LF, states_num=256, include_limit=220)
-tms = train!(tm, x_train, y_train, x_test, y_test, EPOCHS, shuffle=true, verbose=1, index=true)
+tms = train!(tm, x_train, y_train, x_test, y_test, EPOCHS, index=true)
