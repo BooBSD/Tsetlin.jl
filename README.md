@@ -75,21 +75,9 @@ tm = load("/tmp/tm_best.tm")
 println(accuracy(predict(tm, x_test), y_test))
 ```
 
-How to run examples
--------------------
+Examples
+--------
 
-0. Make sure that you have installed the latest version of the [Julia language](https://julialang.org/downloads/).
-1. Go to the examples directory: `cd ./examples`
-2. Run `julia --project=. -O3 -t 32 mnist.jl` where `32` is the number of your logical CPU cores.
+This repository includes examples for *MNIST*, *Fashion-MNIST*, *CIFAR-10*, *AmazonSales*, *IMDb* sentiment analysis, and *Shakespeare* character-level **text generation**.
 
-Benchmark
----------
-The maximum MNIST inference speed achieved is **208 million** predictions per second (with a throughput of **19.1 GB/s**) in batch mode on a Ryzen 7950X3D desktop CPU, utilizing 32 threads.
-
-Trained and optimized models can be found in `./examples/models/`.
-
-How to run MNIST inference benchmark:
-
-0. Please close all other programs such as web browsers, antivirus software, torrent clients, music players, etc.
-1. Go to the examples directory: `cd ./examples`
-2. Run `julia --project=. -O3 -t 32 mnist_benchmark_inference.jl` where `32` is the number of your logical CPU cores.
+Instructions on how to run the examples can be found [here](https://github.com/BooBSD/Tsetlin.jl/tree/main/examples).
