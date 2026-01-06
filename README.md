@@ -84,7 +84,7 @@ And then I will be so.
 Introduction
 ------------
 
-Here is a quick "Hello, World!" example of a typical use case.
+Here is a quick *"Hello, World!"* example of a typical use case.
 
 Importing the necessary functions and MNIST dataset:
 
