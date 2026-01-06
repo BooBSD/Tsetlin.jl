@@ -133,7 +133,7 @@ end
 
 function gen_context_hvector(context_window::SubArray{UInt8})::BitVector
     context, indexes, context_prev = weighted_subsample(context_window, lambda=LAMBDA, min_p=MIN_P)
-    hvs::Vector{BitVector} = Vector{BitVector}(undef, length(context))
+    hvs = Vector{BitVector}(undef, length(context))
     @inbounds for i in eachindex(context)
         token_current = circshift(hvectors[context[i]], indexes[i])
         token_previous = hvectors[context_prev[i]]
@@ -190,7 +190,7 @@ function sample()
     for n in 1:TOKENS_GENERATE
         con = @view(prompt_vector[max(end - CONTEXT_SIZE + 1, 1):end])
 
-        hvs::Vector{BitVector} = Vector{BitVector}(undef, SUBSAMPLES)
+        hvs = Vector{BitVector}(undef, SUBSAMPLES)
         for i in 1:SUBSAMPLES
             context = @view(con[rand(max(end - CONTEXT_SIZE + 1, 1):end):end])
             # context = con
