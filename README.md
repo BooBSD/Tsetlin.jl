@@ -103,10 +103,6 @@ x_train = [booleanize(x, 0, 0.5) for x in x_train]
 x_test = [booleanize(x, 0, 0.5) for x in x_test]
 ```
 
-There are some different hyperparameters compared to the [Vanilla Tsetlin Machine](https://github.com/cair/tmu).
-The hyperparameter `L` limits the number of included literals in a clause.
-New hyperparameter `LF` that sets the number of literal misses allowed for the clause.
-
 ### Hyperparameters
 This implementation introduces some differences compared to the Vanilla Tsetlin Machine:
 
