@@ -24,6 +24,63 @@ Key features
   - Built-in benchmarking tool.
 
 
+Quick start
+-----------
+
+> *Talk is cheap, show me the ~~code~~ some examples.*
+
+First, install the [Julia language](https://julialang.org) using the following command:
+
+```shell
+curl -fsSL https://install.julialang.org | sh
+```
+
+Follow the installation instructions.
+In the first terminal window, run the following command to train your model over many epochs:
+
+```shell
+julia --project=. -O3 -t auto examples/TEXT/text.jl
+```
+
+In the second terminal window, run the same command after each training epoch to observe how the text quality changes from one epoch to the next.
+
+```shell
+julia --project=. -O3 -t auto examples/TEXT/text.jl
+```
+
+After 200+ epochs, you should see something like this:
+
+```text
+ROMEO:
+The father's death,
+And then I shall be so;
+For I have done that was a queen,
+That I may be so, my lord.
+
+JULIET:
+I would have should be so, for the prince,
+And then I shall be so;
+For the princely father with the princess,
+And then I shall be the virtue of your soul,
+Which your son,--
+
+ESCALUS:
+What, what should be particular me to death.
+
+BUCKINGHAM:
+God save the queen's proclaim'd:
+Come, come, the Duke of York.
+
+KING EDWARD IV:
+So do I do not know the prince,
+And then I shall be so, and such a part.
+
+KING RICHARD III:
+Shall I be some confess the state,
+Which way the sun the prince's dead;
+And then I will be so.
+```
+
 Introduction
 ------------
 
