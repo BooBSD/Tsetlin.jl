@@ -1,4 +1,4 @@
-# Tsetlin Machine: Fresh Thinking in ML
+# Fuzzy-Pattern Tsetlin Machine: Fresh Thinking in ML
 
 
 > *“Speed is the most important feature.”*
