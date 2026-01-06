@@ -39,13 +39,13 @@ Follow the installation instructions.
 In the first terminal window, run the following command to train your model over many epochs:
 
 ```shell
-julia --project=. -O3 -t auto examples/TEXT/text.jl
+julia -t auto examples/TEXT/text.jl
 ```
 
 In the second terminal window, run the same command after each training epoch to observe how the text quality changes from one epoch to the next.
 
 ```shell
-julia --project=. -O3 -t auto examples/TEXT/text.jl
+julia -t auto examples/TEXT/text.jl
 ```
 
 After 200+ epochs, you should see something like this:
