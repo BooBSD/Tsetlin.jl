@@ -153,7 +153,7 @@ function train()
     x_sample = TMInput(hv_sample.chunks, hv_sample.len)
     y_samples = collect(keys(hvectors))
     tm = TMClassifier(x_sample, y_samples, CLAUSES, T, S, L=L, LF=LF, states_num=65536, include_limit=65000)
-    save(tm, TM_PATH)  # Save empty model for sample()
+    save(compile(tm), TM_PATH)  # Save empty model for sample()
     for epoch in 1:EPOCHS
         elapsed = @elapsed begin
             cnt = 0
@@ -173,7 +173,7 @@ function train()
             cnt |> println
         end
         println("Epoch #$(epoch) elapsed in $(elapsed)")
-        save(tm, TM_PATH)
+        save(compile(tm), TM_PATH)
     end
 end
 
