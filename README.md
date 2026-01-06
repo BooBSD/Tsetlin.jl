@@ -78,7 +78,7 @@ Which way the sun the prince's dead;
 And then I will be so.
 ```
 
-## Introduction
+## How to use
 
 Here is a quick *"Hello, World!"* example of a typical use case with the Tsetlin Machine.
 
