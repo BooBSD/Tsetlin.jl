@@ -127,7 +127,7 @@ Loading the compiled model and evaluating accuracy:
 
 ```julia
 tm = load("/tmp/tm_last.tm")
-println(accuracy(predict(tm, x_test), y_test))
+accuracy(predict(tm, x_test), y_test) |> println
 ```
 
 Benchmarking the compiled model:
