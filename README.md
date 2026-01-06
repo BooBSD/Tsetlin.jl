@@ -5,10 +5,8 @@
 
 *Fred Wilson*
 
-The Tsetlin Machine library, with zero external dependencies, performs blazingly fast.
-Over **200 million** MNIST predictions per second, with a throughput of **19 GB/s**, were achieved on a desktop CPU.
-
-<img width="882" alt="Tsetlin Machine performance benchmark" src="https://github.com/user-attachments/assets/86ea2642-5cc8-4037-ad88-b45494b93057" />
+This repository provides an alternative Fuzzy-Pattern Tsetlin Machine implementation with zero external dependencies and blazingly fast performance.
+It achieves over **31 million** MNIST predictions per second at 98% accuracy, with a throughput of **4 GB/s** on a desktop CPU.
 
 
 Key features
