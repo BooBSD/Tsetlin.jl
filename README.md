@@ -9,7 +9,7 @@ This repository provides an alternative [Fuzzy-Pattern Tsetlin Machine](https://
 It achieves over **32 million** MNIST predictions per second at 98% accuracy, with a throughput of **4 GB/s** on a desktop CPU.
 
 
-Key features
+Key Features
 ------------
 
   - Up to **7× faster training** and **11× faster inference** compared to the original FPTM implementation, achieved through the use of bitwise operations, SIMD instructions, and a specialized memory layout.
@@ -24,7 +24,7 @@ Key features
   - Built-in benchmarking tool.
 
 
-Quick start
+Quick Start
 -----------
 
 > *Talk is cheap, show me the ~~code~~ some examples.*
@@ -140,7 +140,7 @@ Benchmarking the compiled model:
 benchmark(tm, x_test, y_test, 1000 * 4, warmup=true, index=false)
 ```
 
-Examples
+More Examples
 --------
 
 This repository includes examples for *MNIST*, *Fashion-MNIST*, *CIFAR-10*, *AmazonSales*, *IMDb* sentiment analysis, and *Shakespeare* character-level **text generation**.
