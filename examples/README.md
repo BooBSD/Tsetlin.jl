@@ -94,9 +94,3 @@ Run the MNIST training example:
 ```shell
 julia --project=. -O3 -t 32 examples/MNIST/mnist.jl
 ```
-
-To run the MNIST inference benchmark, please use the following command:
-
-```shell
-julia --project=. -O3 -t 32 examples/MNIST/mnist_benchmark_inference.jl
-```
