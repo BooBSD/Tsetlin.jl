@@ -9,15 +9,15 @@ train = readlines("/tmp/IMDBTrainingData.txt")
 test = readlines("/tmp/IMDBTestData.txt")
 
 # Preparing datasets
-x_train::Vector{TMInput} = Vector{TMInput}(undef, length(train))
-y_train::Vector{Bool} = Vector{Bool}(undef, length(train))
+x_train = Vector{TMInput}(undef, length(train))
+y_train = Vector{Bool}(undef, length(train))
 @threads for i in eachindex(train)
     xy = [parse(Bool, x) for x in split(train[i], " ")]
     x_train[i] = TMInput(xy[1:length(xy) - 1])
     y_train[i] = xy[length(xy)]
 end
-x_test::Vector{TMInput} = Vector{TMInput}(undef, length(test))
-y_test::Vector{Bool} = Vector{Bool}(undef, length(test))
+x_test = Vector{TMInput}(undef, length(test))
+y_test = Vector{Bool}(undef, length(test))
 @threads for i in eachindex(test)
     xy = [parse(Bool, x) for x in split(test[i], " ")]
     x_test[i] = TMInput(xy[1:length(xy) - 1])

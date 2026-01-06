@@ -661,7 +661,7 @@ function bools(rawR, x3R, y3R, x5R, y5R, x7R, y7R, x9R, y9R, rawG, x3G, y3G, x5G
 end
 
 
-X_train::Vector{TMInput} = Vector{TMInput}(undef, length(x_train))
+X_train = Vector{TMInput}(undef, length(x_train))
 @threads for i in eachindex(x_train)
     X_train[i] = bools(
         x_trainR[i],
@@ -694,7 +694,7 @@ X_train::Vector{TMInput} = Vector{TMInput}(undef, length(x_train))
     )
 end
 
-X_test::Vector{TMInput} = Vector{TMInput}(undef, length(x_test))
+X_test = Vector{TMInput}(undef, length(x_test))
 @threads for i in eachindex(x_test)
     X_test[i] = bools(
         x_testR[i],
