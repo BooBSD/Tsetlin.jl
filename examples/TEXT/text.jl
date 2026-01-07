@@ -19,7 +19,7 @@ MIN_P = 0.05  # 0.05, 0.1
 ALPHA_NORM = 1.0  # 1.0, 2.25
 SUBSAMPLES = 21
 TOKENS_GENERATE = 2000
-# Dirty hack to force text generation starting from "ROLE:"
+# Simple hack to force text generation starting from "ROLE:"
 PROMPT = "--\n\n"
 
 
@@ -50,22 +50,6 @@ function get_stochastic_updates(weight::Float64)::Int
     return base_count + extra
 end
 
-tokens_count::Dict{UInt8, Int} = Dict()
-for t in tokens
-    tokens_count[t] = count(==(t), CORPUS)
-end
-max_freq = maximum(values(tokens_count))
-tokens_probs::Dict{UInt8, Float64} = Dict()
-for (char, count) in tokens_count
-    raw_ratio = max_freq / count
-    tokens_probs[char] = 1.0 + ALPHA_NORM * log(raw_ratio)
-end
-
-sort!(tokens, by=t -> tokens_probs[t], rev=true)
-
-for t in tokens
-    println("$(Char(t)): $(get_stochastic_updates(tokens_probs[t]))")
-end
 
 if isfile(HV_PATH)
     hvectors = deserialize(HV_PATH)
@@ -76,6 +60,7 @@ else
     end
     serialize(HV_PATH, hvectors)
 end
+
 
 function bind(A::BitVector, B::BitVector)::BitVector
     if length(A) != length(B)
@@ -153,6 +138,21 @@ end
 
 # Training the TM model
 function train()
+    tokens_count::Dict{UInt8, Int} = Dict()
+    for t in tokens
+        tokens_count[t] = count(==(t), CORPUS)
+    end
+    max_freq = maximum(values(tokens_count))
+    tokens_probs::Dict{UInt8, Float64} = Dict()
+    for (char, count) in tokens_count
+        raw_ratio = max_freq / count
+        tokens_probs[char] = 1.0 + ALPHA_NORM * log(raw_ratio)
+    end
+    sort!(tokens, by=t -> tokens_probs[t], rev=true)
+    for t in tokens
+        println("$(Char(t)): $(get_stochastic_updates(tokens_probs[t]))")
+    end
+
     hv_sample = gen_context_hvector(@view(CORPUS[1:CONTEXT_SIZE]))
     x_sample = TMInput(hv_sample.chunks, hv_sample.len)
     y_samples = collect(keys(hvectors))
