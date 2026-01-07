@@ -27,25 +27,27 @@ It achieves over **32 million** MNIST predictions per second at 98% accuracy, wi
 
 > *Talk is cheap, show me the ~~code~~ some examples.*
 
+Below is an example of character-level text generation in the style of Shakespeare.
+
 First, install the [Julia language](https://julialang.org) by running the following command and following the installation instructions:
 
 ```shell
 curl -fsSL https://install.julialang.org | sh
 ```
 
-In the **first terminal window**, run the following command to train your model over multiple epochs:
+In the **first terminal window**, run the following command to train the model over multiple epochs:
 
 ```shell
 julia -t auto examples/TEXT/text.jl
 ```
 
-In the **second terminal window**, run the same command after each training epoch to observe how the text quality changes from one epoch to the next:
+In the **second terminal window**, run the same command after each training epoch to observe how the quality of the generated text evolves from one epoch to the next:
 
 ```shell
 julia -t auto examples/TEXT/text.jl
 ```
 
-After *200+* epochs, you should see output similar to the following:
+After **200+** epochs, you should see output similar to the following:
 
 ```text
 ROMEO:
