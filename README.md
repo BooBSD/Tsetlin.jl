@@ -47,7 +47,7 @@ In the **second terminal window**, run the same command after each training epoc
 julia -t auto examples/TEXT/text.jl
 ```
 
-After *200+* epochs, you should see output similar to the following:
+After **200+** epochs, you should see output similar to the following:
 
 ```text
 ROMEO:
