@@ -15,7 +15,7 @@ It achieves over **32 million** MNIST predictions per second at 98% accuracy, wi
   - Binary classifier.
   - Multi-class classifier.
   - Single-threaded and multi-threaded training and inference.
-  - Specialized **BitSet index** for improved performance on very large, sparse binary vector inputs.
+  - Specialized **BitSet index** over literals to improve performance on very large, sparse binary vector inputs.
   - Model compilation to reduce memory usage and increase inference speed.
   - Save and load trained models for production deployment or continued training with modified hyperparameters.
   - Automatic selection of `UInt8` or `UInt16` Tsetlin Automata based on the number of TA states.
