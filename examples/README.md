@@ -22,16 +22,16 @@ Below is an example of character-level text generation in the style of Shakespea
 In the **first terminal window**, run the following command to train the model over multiple epochs:
 
 ```shell
-julia -t auto examples/TEXT/text.jl
+julia -t auto examples/TEXT/train.jl
 ```
 
-In the **second terminal window**, run the same command after each training epoch to observe how the quality of the generated text evolves from one epoch to the next:
+In the **second terminal window**, run the following command after each training epoch to observe how the quality of the generated text evolves from one epoch to the next:
 
 ```shell
-julia -t auto examples/TEXT/text.jl
+julia -t auto examples/TEXT/sample.jl
 ```
 
-After **200+** epochs, you should see output similar to the following:
+After **400+** epochs, you should see output similar to the following:
 
 ```text
 ROMEO:
