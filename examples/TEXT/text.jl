@@ -1,9 +1,9 @@
 include("../../src/Tsetlin.jl")
 
-using Random
+using Dates
 using Base.Threads
 using Serialization
-using .Tsetlin: TMInput, TMClassifier, train!, predict, accuracy, save, load, compile
+using .Tsetlin: TMInput, TMClassifier, train!, predict, accuracy, save, load, compile, literals_sum
 
 
 CORPUS_URL = "https://raw.githubusercontent.com/BooBSD/char-rnn/refs/heads/patch-1/data/tinyshakespeare/input.txt"
@@ -17,6 +17,10 @@ SAMPLES_PER_EPOCH = 1_000_000
 LAMBDA = 0.05  # 0.05
 MIN_P = 0.05  # 0.05, 0.1
 ALPHA_NORM = 1.0  # 1.0, 2.25
+SUBSAMPLES = 21
+TOKENS_GENERATE = 2000
+# Dirty hack to force text generation starting from "ROLE:"
+PROMPT = "--\n\n"
 
 
 CLAUSES = 64  # Not bad results!
@@ -154,37 +158,49 @@ function train()
     y_samples = collect(keys(hvectors))
     tm = TMClassifier(x_sample, y_samples, CLAUSES, T, S, L=L, LF=LF, states_num=65536, include_limit=65000)
     save(compile(tm), TM_PATH)  # Save empty model for sample()
-    for epoch in 1:EPOCHS
-        elapsed = @elapsed begin
-            cnt = 0
-            @threads for n in 1:SAMPLES_PER_EPOCH
-                start = rand(1:CORPUS_LENGTH - CONTEXT_SIZE - 1)
-                finish = rand(start:start + CONTEXT_SIZE - 1)
-                y = CORPUS[finish + 1]
-                # Balancing classes
-                for i in 1:get_stochastic_updates(tokens_probs[y])
-                    context = @view(CORPUS[start:finish])
-                    hv = gen_context_hvector(context)
-                    x = TMInput(hv.chunks, hv.len)
-                    train!(tm, x, y)
-                    cnt += 1
+
+    density = round(sum(x_sample) / length(x_sample) * 100, digits=2)
+    println("\nClasses: $(tm.classes_num), clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), LF: $(tm.LF), states_num: $(tm.state_max + 1), include_limit: $(tm.include_limit).")
+    println("Input vector size: $(length(x_sample)) bits, density: $(density)%, training dataset size: $(CORPUS_LENGTH).")
+    println("Expected average clause literal density: $(round(tm.L / length(x_sample) * 100, digits=2))%. Using literals index: false.")
+    println("Running in $(nthreads()) threads. Accuracy over $(EPOCHS) epochs:\n")
+    all_time = @elapsed begin
+        for epoch in 1:EPOCHS
+            epoch_time = @elapsed begin
+                counter = Atomic{Int}(0)
+                @threads for _ in 1:SAMPLES_PER_EPOCH
+                    if counter[] > SAMPLES_PER_EPOCH
+                        break
+                    end
+                    start = rand(1:CORPUS_LENGTH - CONTEXT_SIZE - 1)
+                    finish = rand(start:start + CONTEXT_SIZE - 1)
+                    y = CORPUS[finish + 1]
+                    # Balancing classes
+                    @inbounds for i in 1:get_stochastic_updates(tokens_probs[y])
+                        context = @view(CORPUS[start:finish])
+                        hv = gen_context_hvector(context)
+                        x = TMInput(hv.chunks, hv.len)
+                        train!(tm, x, y)
+                        atomic_add!(counter, 1)
+                    end
                 end
             end
-            cnt |> println
+            epoch_time = Time(0) + Second(floor(Int, epoch_time))
+            println("Epoch #$(epoch) elapsed in $(epoch_time)")
+            save(compile(tm), TM_PATH)
         end
-        println("Epoch #$(epoch) elapsed in $(elapsed)")
-        save(compile(tm), TM_PATH)
     end
+    elapsed = Time(0) + Second(floor(Int, all_time))
+    average_clause_density = round((literals_sum(tm) / (tm.classes_num * tm.clauses_num * 2)) / length(x_sample) * 100, digits=2)
+    println("\n$(EPOCHS) epochs done in $(elapsed).")
+    println("Classes: $(tm.classes_num), clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), LF: $(tm.LF), states_num: $(tm.state_max + 1), include_limit: $(tm.include_limit).")
+    println("Input vector size: $(length(x_sample)) bits, density: $(density)%, training dataset size: $(CORPUS_LENGTH).")
+    println("Average clause literal density: $(average_clause_density)%. Using literals index: false.\n")
 end
 
 
-# Dirty hack to force text generation starting from "ROLE:"
-PROMPT = "--\n\n"
-
 function sample()
     tm = load(TM_PATH)
-    SUBSAMPLES = 21
-    TOKENS_GENERATE = 10000
     prompt = PROMPT[max(end - CONTEXT_SIZE + 1, 1):end]
     prompt_vector = [UInt8(t) for t in prompt]
     for n in 1:TOKENS_GENERATE
