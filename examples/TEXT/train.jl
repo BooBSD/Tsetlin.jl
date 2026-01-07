@@ -4,6 +4,7 @@ include("config.jl")
 
 
 using Dates
+using Random
 using Base.Threads
 using Serialization
 using .Tsetlin: TMInput, TMClassifier, train!, save, compile, literals_sum
