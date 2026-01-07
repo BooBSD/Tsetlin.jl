@@ -28,7 +28,7 @@ julia -t auto examples/TEXT/train.jl
 In the **second terminal window**, run the following command after each training epoch to observe how the quality of the generated text evolves from one epoch to the next:
 
 ```shell
-julia -t auto examples/TEXT/sample.jl
+julia examples/TEXT/sample.jl
 ```
 
 After **400+** epochs, you should see output similar to the following:
