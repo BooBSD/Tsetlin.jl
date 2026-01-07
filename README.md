@@ -28,6 +28,7 @@ It achieves over **32 million** MNIST predictions per second at 98% accuracy, wi
 > *Talk is cheap, show me the ~~code~~ some examples.*
 
 Below is an example of character-level text generation in the style of Shakespeare.
+
 First, install the [Julia language](https://julialang.org) by running the following command and following the installation instructions:
 
 ```shell
