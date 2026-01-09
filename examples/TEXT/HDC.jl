@@ -64,7 +64,7 @@ function gen_context_hvector!(
             curr_val = context_window[i]
             circshift!(scratch, hvectors[curr_val], dist_from_end + 1)
             if n > 0
-                prev_val = (i == 1) ? curr_val : context_window[i - 1]
+                prev_val = context_window[i - 1]
                 bind!(scratch, hvectors[prev_val])
             end
             bundle_add!(acc, scratch)
