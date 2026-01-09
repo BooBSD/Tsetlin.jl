@@ -19,26 +19,16 @@ for n in 1:TOKENS_GENERATE
     local_acc = zeros(BUNDLE_ACC_TYPE, HV_DIMENSIONS)
     local_scratch = BitVector(undef, HV_DIMENSIONS)
     acc = zeros(BUNDLE_ACC_TYPE, HV_DIMENSIONS)
+
     for i in 1:SUBSAMPLES
         context = @view(con[rand(max(end - CONTEXT_SIZE + 1, 1):end):end])
         # context = con
-
-        # gen_context_hvector!(local_acc, local_scratch, context, hvectors)
-        # bundle_add!(acc, binarize_bundle(local_acc))
         gen_context_hvector!(local_acc, local_scratch, context, hvectors)
+        # bundle_add!(acc, binarize_bundle(local_acc))
         acc = bundle(acc, local_acc)
     end
     hv = binarize_bundle(acc)
     push!(prompt_vector, predict(tm, TMInput(hv.chunks, hv.len)))
-
-    # xs::Vector{TMInput} = []
-    # for i in 1:SUBSAMPLES
-    #     context = @view(con[rand(max(end - CONTEXT_SIZE + 1, 1):end):end])
-    #     # context = con
-    #     hv = gen_context_hvector(context, hvectors)
-    #     push!(xs, TMInput(hv.chunks, hv.len))
-    # end
-    # push!(prompt_vector, predict(tm, xs..., diff=500))  # 100
 
     print(Char(prompt_vector[n + length(prompt)]))
 end
