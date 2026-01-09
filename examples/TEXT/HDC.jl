@@ -1,77 +1,74 @@
 export HDC
 
 
-function bind(A::BitVector, B::BitVector)::BitVector
-    if length(A) != length(B)
-        error("The dimensions of the vectors must match")
+bind(A::BitVector, B::BitVector)::BitVector = A .⊻ B
+
+bind!(target::BitVector, source::BitVector) = (target .⊻= source)
+
+bundle(vectors::Vector{<:Integer}...) = sum(vectors)
+
+
+function bundle_add!(acc::AbstractVector{T}, hv::BitVector) where T <: Integer
+    @inbounds @simd for i in eachindex(acc, hv)
+        acc[i] += ifelse(hv[i], one(T), -one(T))
     end
-    return A .⊻ B
+    return acc
 end
 
 
-function bundle(vectors::Vector{BitVector})::BitVector
+function binarize_bundle(acc::AbstractVector{T})::BitVector where T <: Integer
+    res = BitVector(undef, length(acc))
+    zero_val = zero(T)
+    @inbounds for i in eachindex(acc)
+        val = acc[i]
+        if val == zero_val
+            res[i] = rand(Bool)
+        else
+            res[i] = val > zero_val
+        end
+    end
+    return res
+end
+
+
+function bundle(vectors::Vector{BitVector}; acc_type::Type{T} = BUNDLE_ACC_TYPE)::BitVector where T <: Integer
     isempty(vectors) && error("The vector list is empty")
     dim = length(vectors[1])
-    n = length(vectors)
-    counts = zeros(Int, dim)
+    acc = zeros(acc_type, dim)
     @inbounds for v in vectors
         length(v) == dim || error("All vectors must be of the same dimension")
-        counts .+= v
+        bundle_add!(acc, v)
     end
-    threshold = n ÷ 2
-    
-    if isodd(n)
-        return counts .> threshold
-    else
-        result = BitVector(undef, dim)
-        @inbounds for i in 1:dim
-            if counts[i] == threshold
-                result[i] = rand(Bool)
-            else
-                result[i] = counts[i] > threshold
-            end
-        end
-        return result
-    end
+    return binarize_bundle(acc)
 end
 
 
 # Monte Carlo sparse context subsampling
 
-function weighted_subsample(tokens::SubArray{T}; lambda::Float64 = 0.05, min_p::Float64 = 0.05)::Tuple{Vector{T}, Vector{Int}, Vector{T}} where T
-    n = length(tokens)
-    selected::Vector{T} = []
-    indexes::Vector{Int} = []
-    selected_prev::Vector{T} = []
-    @inbounds for i in 1:n
-        dist_from_end = n - i
-        p = exp(-lambda * dist_from_end)        
-        p = max(p, min_p)
+function gen_context_hvector!(
+    acc::Vector{T},
+    scratch::BitVector,
+    context_window::SubArray{UInt8},
+    hvectors::Dict{UInt8, BitVector};
+    lambda::Float64 = 0.05,
+    min_p::Float64 = 0.05,
+    D::Int64 = HV_DIMENSIONS
+) where T <: Integer
+    fill!(acc, zero(T))
+    n = 0
+    len = length(context_window)
+    @inbounds for i in 1:len
+        dist_from_end = len - i
+        p = max(exp(-lambda * dist_from_end), min_p)
         if rand() < p
-            push!(selected, tokens[i])
-            push!(indexes, dist_from_end + 1)
-            if i != 1
-                push!(selected_prev, tokens[i - 1])
-            else
-                push!(selected_prev, tokens[i])
+            curr_val = context_window[i]
+            circshift!(scratch, hvectors[curr_val], dist_from_end + 1)
+            if n > 0
+                prev_val = (i == 1) ? curr_val : context_window[i - 1]
+                bind!(scratch, hvectors[prev_val])
             end
+            bundle_add!(acc, scratch)
+            n += 1
         end
     end
-    return selected, indexes, selected_prev
-end
-
-
-function gen_context_hvector(context_window::SubArray{UInt8})::BitVector
-    context, indexes, context_prev = weighted_subsample(context_window, lambda=LAMBDA, min_p=MIN_P)
-    hvs = Vector{BitVector}(undef, length(context))
-    @inbounds for i in eachindex(context)
-        token_current = circshift(hvectors[context[i]], indexes[i])
-        token_previous = hvectors[context_prev[i]]
-        if i != 1
-            hvs[i] = bind(token_current, token_previous)
-        else
-            hvs[i] = token_current
-        end
-    end
-    return bundle(hvs)
 end

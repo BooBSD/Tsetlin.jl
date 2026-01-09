@@ -51,7 +51,10 @@ else
 end
 
 # Training the TM model
-hv_sample = gen_context_hvector(@view(CORPUS[1:CONTEXT_SIZE]))
+local_acc = zeros(BUNDLE_ACC_TYPE, HV_DIMENSIONS)
+local_scratch = BitVector(undef, HV_DIMENSIONS)
+gen_context_hvector!(local_acc, local_scratch, @view(CORPUS[1:CONTEXT_SIZE]), hvectors)
+hv_sample = binarize_bundle(local_acc)
 x_sample = TMInput(hv_sample.chunks, hv_sample.len)
 y_samples = collect(keys(hvectors))
 tm = TMClassifier(x_sample, y_samples, CLAUSES, T, S, L=L, LF=LF, states_num=65536, include_limit=65000)
@@ -65,21 +68,25 @@ println("Running in $(nthreads()) threads. Training over $(EPOCHS) epochs:\n")
 all_time = @elapsed begin
     for epoch in 1:EPOCHS
         epoch_time = @elapsed begin
-            counter = Atomic{Int}(0)
-            @threads for _ in 1:SAMPLES_PER_EPOCH
-                if counter[] > SAMPLES_PER_EPOCH
-                    break
-                end
-                start = rand(1:CORPUS_LENGTH - CONTEXT_SIZE - 1)
-                finish = rand(start:start + CONTEXT_SIZE - 1)
-                y = CORPUS[finish + 1]
-                # Balancing classes
-                @inbounds for i in 1:get_stochastic_updates(tokens_probs[y])
+            counter = 0
+            @threads for t_id in 1:nthreads()
+                local_acc = zeros(BUNDLE_ACC_TYPE, HV_DIMENSIONS)
+                local_scratch = BitVector(undef, HV_DIMENSIONS)
+                while counter < SAMPLES_PER_EPOCH
+                    start = rand(1:CORPUS_LENGTH - CONTEXT_SIZE - 1)
+                    finish = rand(start:start + CONTEXT_SIZE - 1)
                     context = @view(CORPUS[start:finish])
-                    hv = gen_context_hvector(context)
+                    y = CORPUS[finish + 1]
+                    gen_context_hvector!(local_acc, local_scratch, context, hvectors)
+                    hv = binarize_bundle(local_acc)
                     x = TMInput(hv.chunks, hv.len)
-                    train!(tm, x, y)
-                    atomic_add!(counter, 1)
+                    for _ in 1:get_stochastic_updates(tokens_probs[y])
+                        if counter >= SAMPLES_PER_EPOCH
+                            break
+                        end
+                        train!(tm, x, y)
+                        counter += 1
+                    end
                 end
             end
         end

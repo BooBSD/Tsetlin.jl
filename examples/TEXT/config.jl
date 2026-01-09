@@ -6,13 +6,14 @@ CORPUS_PATH = "/tmp/input.txt"
 TM_PATH = "/tmp/tm_text.tm"
 HV_PATH = "/tmp/hvectors"
 HV_DIMENSIONS = 64 * 256  # 64 * 256
+BUNDLE_ACC_TYPE = Int16
 CONTEXT_SIZE = 256  # 256
 EPOCHS = 1000
 SAMPLES_PER_EPOCH = 1_000_000
 LAMBDA = 0.05  # 0.05
 MIN_P = 0.05  # 0.05, 0.1
 ALPHA_NORM = 1.0  # 1.0, 2.25
-SUBSAMPLES = 21
+SUBSAMPLES = 15
 TOKENS_GENERATE = 2000
 # Simple hack to force text generation starting from "ROLE:"
 PROMPT = "--\n\n"
