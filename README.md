@@ -1,7 +1,7 @@
 # Tsetlin Machine: Fresh Thinking in ML
 
 
-> *“Speed is the most important feature.”*
+> *Speed is the most important feature.*
 
 *Fred Wilson*
 
