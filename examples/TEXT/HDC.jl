@@ -7,6 +7,8 @@ bind!(target::BitVector, source::BitVector) = (target .⊻= source)
 
 bundle(vectors::Vector{<:Integer}...) = sum(vectors)
 
+bundle!(acc::Vector{T}, hv::Vector{T}) where T<:Integer = acc .+= hv
+
 
 function bundle_add!(acc::AbstractVector{T}, hv::BitVector) where T <: Integer
     @inbounds @simd for i in eachindex(acc, hv)
@@ -50,25 +52,30 @@ function gen_context_hvector!(
     scratch::BitVector,
     context_window::SubArray{UInt8},
     hvectors::Dict{UInt8, BitVector};
-    lambda::Float64 = 0.05,
-    min_p::Float64 = 0.05,
+    lambda::Float64 = LAMBDA,
+    min_p::Float64 = MIN_P,
     D::Int64 = HV_DIMENSIONS
 ) where T <: Integer
     fill!(acc, zero(T))
-    n = 0
+    n = 1
     len = length(context_window)
     @inbounds for i in 1:len
-        dist_from_end = len - i
-        p = max(exp(-lambda * dist_from_end), min_p)
-        if rand() < p
-            curr_val = context_window[i]
-            circshift!(scratch, hvectors[curr_val], dist_from_end + 1)
-            if n > 0
-                prev_val = context_window[i - 1]
-                bind!(scratch, hvectors[prev_val])
+        if n > 1
+            dist_from_end = len - i
+            p = max(exp(-lambda * dist_from_end), min_p)
+            if rand() < p
+                circshift!(scratch, hvectors[context_window[i]], dist_from_end + 1)
+                bind!(scratch, hvectors[context_window[i - 1]])
+                # circshift!(scratch, scratch, dist_from_end + 2)
+                # bind!(scratch, hvectors[context_window[i - 2]])
+                # circshift!(scratch, scratch, dist_from_end + 3)
+                bundle_add!(acc, scratch)
+                # if i == len
+                #     bundle_add!(acc, scratch)
+                #     bundle_add!(acc, scratch)
+                # end
             end
-            bundle_add!(acc, scratch)
-            n += 1
         end
+        n += 1
     end
 end

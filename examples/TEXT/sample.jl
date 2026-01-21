@@ -25,9 +25,10 @@ for n in 1:TOKENS_GENERATE
         # context = con
         gen_context_hvector!(local_acc, local_scratch, context, hvectors)
         # bundle_add!(acc, binarize_bundle(local_acc))
-        acc = bundle(acc, local_acc)
+        bundle!(acc, local_acc)
     end
     hv = binarize_bundle(acc)
+    # push!(prompt_vector, predict(tm, TMInput(hv.chunks, hv.len), diff=200))
     push!(prompt_vector, predict(tm, TMInput(hv.chunks, hv.len)))
 
     print(Char(prompt_vector[n + length(prompt)]))
