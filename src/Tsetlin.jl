@@ -26,7 +26,7 @@ mutable struct TMInput <: AbstractTMInput
         chunks::Memory{UInt64} = Memory{UInt64}(undef, ceil(Int, len / 64))
         @inbounds for i in eachindex(chunks)
             chunk::UInt64 = zero(UInt64)
-            @inbounds @simd for ii in 0:63
+            @inbounds @simd for ii in 0:min(63, len - (i - 1) * 64 - 1)
                 n = i * 64 - 63 + ii
                 chunk |= x[n] << ii
             end
