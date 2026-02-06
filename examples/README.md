@@ -12,7 +12,7 @@ pip install -r examples/requirements.txt
 Run the MNIST training example:
 
 ```shell
-julia --project=. -O3 -t auto examples/MNIST/mnist.jl
+julia -O3 -t auto examples/MNIST/mnist.jl
 ```
 
 ### Shakespeare character-level text generation
@@ -83,7 +83,7 @@ python examples/IMDb/prepare_dataset.py --max-ngram=4 --features=12800 --imdb-nu
 Run the IMDb training and benchmarking example:
 
 ```shell
-julia --project=. -O3 -t auto examples/IMDb/imdb_minimal.jl
+julia -O3 -t auto examples/IMDb/imdb_minimal.jl
 ```
 
 ### IMDb Example (200 clauses per class)
@@ -97,7 +97,7 @@ python examples/IMDb/prepare_dataset.py --max-ngram=4 --features=65535 --imdb-nu
 Run the IMDb training and benchmarking example:
 
 ```shell
-julia --project=. -O3 -t auto examples/IMDb/imdb_optimal.jl
+julia -O3 -t auto examples/IMDb/imdb_optimal.jl
 ```
 
 ### Noisy Amazon Sales Example
@@ -111,7 +111,7 @@ python examples/AmazonSales/prepare_dataset.py --dataset_noise_ratio=0.005
 Run the Noisy Amazon Sales training example:
 
 ```shell
-julia --project=. -O3 -t auto examples/AmazonSales/amazon.jl
+julia -O3 -t auto examples/AmazonSales/amazon.jl
 ```
 
 ### Fashion-MNIST Example Using Convolutional Preprocessing
@@ -119,7 +119,7 @@ julia --project=. -O3 -t auto examples/AmazonSales/amazon.jl
 Run the Fashion-MNIST training example:
 
 ```shell
-julia --project=. -O3 -t auto examples/FashionMNIST/fmnist_conv.jl
+julia -O3 -t auto examples/FashionMNIST/fmnist_conv.jl
 ```
 
 ### Fashion-MNIST Example Using Convolutional Preprocessing and Data Augmentation
@@ -127,13 +127,13 @@ julia --project=. -O3 -t auto examples/FashionMNIST/fmnist_conv.jl
 To achieve maximum test accuracy, apply data augmentation when preparing the Fashion-MNIST dataset:
 
 ```shell
-julia --project=. -O3 -t auto examples/FashionMNIST/prepare_augmented_dataset.jl
+julia -O3 -t auto examples/FashionMNIST/prepare_augmented_dataset.jl
 ```
 
 Run the example that trains a large model on Fashion-MNIST:
 
 ```shell
-julia --project=. -O3 -t auto examples/FashionMNIST/fmnist_conv_augmented.jl
+julia -O3 -t auto examples/FashionMNIST/fmnist_conv_augmented.jl
 ```
 
 ### CIFAR-10 Example Using Convolutional Preprocessing
@@ -141,11 +141,25 @@ julia --project=. -O3 -t auto examples/FashionMNIST/fmnist_conv_augmented.jl
 Prepare the CIFAR-10 dataset:
 
 ```shell
-julia --project=. -O3 -t auto examples/CIFAR10/prepare_dataset.jl
+julia -O3 -t auto examples/CIFAR10/prepare_dataset.jl
 ```
 
 Run the CIFAR-10 training example:
 
 ```shell
-julia --project=. -O3 -t auto examples/CIFAR10/cifar10_conv.jl
+julia -O3 -t auto examples/CIFAR10/cifar10_conv.jl
+```
+
+### Noisy Parity Problem
+
+Prepare the dataset:
+
+```shell
+python examples/NoisyParity/prepare_dataset.py
+```
+
+Run the Noisy Parity training example:
+
+```shell
+julia -O3 -t auto examples/NoisyParity/noisy_parity.jl
 ```
