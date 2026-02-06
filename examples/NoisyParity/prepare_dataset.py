@@ -1,5 +1,5 @@
 # Source: https://github.com/cair/HierarchicalTsetlinMachine/blob/main/NoisyParityData.py
-# License: MIT © 2026 Centre for Artificial Intelligence Research (CAIR)
+# License: MIT © 2026 Ole-Christoffer Granmo and the University of Agder
 
 
 import numpy as np
