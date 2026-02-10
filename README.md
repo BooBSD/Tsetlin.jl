@@ -140,6 +140,6 @@ benchmark(tm, x_test, y_test, 1000 * 4, warmup=true, index=false)
 
 ## More Examples
 
-This repository includes examples for *MNIST*, *Fashion-MNIST*, *CIFAR-10*, *AmazonSales*, *IMDb* sentiment analysis, and *Shakespeare* character-level **text generation**.
+This repository includes examples for *MNIST*, *Fashion-MNIST*, *CIFAR-10*, *AmazonSales*, *IMDb* sentiment analysis, *Noisy Parity Problem*, and *Shakespeare* character-level **text generation**.
 
 Instructions on how to run the examples can be found [here](https://github.com/BooBSD/Tsetlin.jl/tree/main/examples).
