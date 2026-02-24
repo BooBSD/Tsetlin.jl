@@ -1,17 +1,17 @@
 include("../../src/Tsetlin.jl")
-include("HDC.jl")
 include("config.jl")
+include("HDC.jl")
 
 
 using Dates
 using Random
 using Base.Threads
 using Serialization
-using .Tsetlin: TMInput, TMClassifier, train!, save, compile, literals_sum
+using .Tsetlin: TMInput, TMClassifier, train!, save, load, compile, literals_sum
 
 
 isfile(CORPUS_PATH) || download(CORPUS_URL, CORPUS_PATH)
-CORPUS = read(CORPUS_PATH)
+CORPUS = read(CORPUS_PATH)[1:TRAIN_SIZE]
 CORPUS_LENGTH = length(CORPUS)
 
 tokens = CORPUS |> unique |> sort # Sorted !!!!!!
@@ -29,15 +29,26 @@ tokens_count::Dict{UInt8, Int} = Dict()
 for t in tokens
     tokens_count[t] = count(==(t), CORPUS)
 end
+
+
 max_freq = maximum(values(tokens_count))
 tokens_probs::Dict{UInt8, Float64} = Dict()
+
+# Logarithmic
+# for (char, count) in tokens_count
+#     raw_ratio = max_freq / count
+#     tokens_probs[char] = min(1.0 + ALPHA_NORM * log(raw_ratio), 100.0)
+# end
+
+# Zipf
 for (char, count) in tokens_count
     raw_ratio = max_freq / count
-    tokens_probs[char] = 1.0 + ALPHA_NORM * log(raw_ratio)
+    tokens_probs[char] = raw_ratio ^ ALPHA_NORM
 end
+
 sort!(tokens, by=t -> tokens_probs[t], rev=true)
 for t in tokens
-    println("$(Char(t)): $(get_stochastic_updates(tokens_probs[t]))")
+    println("$(Char(t)) ($(t)): $(get_stochastic_updates(tokens_probs[t]))")
 end
 
 if isfile(HV_PATH)
@@ -53,8 +64,7 @@ end
 # Training the TM model
 local_acc = zeros(BUNDLE_ACC_TYPE, HV_DIMENSIONS)
 local_scratch = BitVector(undef, HV_DIMENSIONS)
-gen_context_hvector!(local_acc, local_scratch, @view(CORPUS[1:CONTEXT_SIZE]), hvectors)
-hv_sample = binarize_bundle(local_acc)
+hv_sample = gen_context_hvector!(local_acc, local_scratch, @view(CORPUS[1:CONTEXT_SIZE]), hvectors)
 x_sample = TMInput(hv_sample.chunks, hv_sample.len)
 y_samples = collect(keys(hvectors))
 tm = TMClassifier(x_sample, y_samples, CLAUSES, T, S, L=L, LF=LF, states_num=STATES_NUM, include_limit=INCLUDE_LIMIT)
@@ -72,18 +82,13 @@ all_time = @elapsed begin
             @threads for t_id in 1:nthreads()
                 local_acc = zeros(BUNDLE_ACC_TYPE, HV_DIMENSIONS)
                 local_scratch = BitVector(undef, HV_DIMENSIONS)
-                acc = zeros(BUNDLE_ACC_TYPE, HV_DIMENSIONS)
                 while counter < SAMPLES_PER_EPOCH
                     start = rand(1:CORPUS_LENGTH - CONTEXT_SIZE - 1)
                     finish = start + CONTEXT_SIZE - 1
                     con = @view(CORPUS[start:finish])
-                    fill!(acc, zero(BUNDLE_ACC_TYPE))
-                    @inbounds for i in 1:SUBSAMPLES
-                        context = @view(con[rand(max(end - CONTEXT_SIZE + 1, 1):end):end])
-                        gen_context_hvector!(local_acc, local_scratch, context, hvectors, lambda=LAMBDA, min_p=MIN_P)
-                        bundle!(acc, local_acc)
-                    end
-                    hv = binarize_bundle(acc)
+                    # context = @view(con[rand(max(end - CONTEXT_SIZE + 1, 1):end):end])
+                    context = con
+                    hv = gen_context_hvector!(local_acc, local_scratch, context, hvectors)
                     x = TMInput(hv.chunks, hv.len)
                     y = CORPUS[finish + 1]
                     @inbounds for _ in 1:get_stochastic_updates(tokens_probs[y])
