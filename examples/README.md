@@ -17,7 +17,7 @@ julia -O3 -t auto examples/MNIST/mnist.jl
 
 ### Shakespeare character-level text generation
 
-Below is an example of character-level text generation in the style of Shakespeare, implemented using FPTM with HDC hypervectors and Monte Carlo sparse context subsampling.
+Below is an example of character-level text generation in the style of Shakespeare, implemented using FPTM with HDC hypervectors.
 
 In the **first terminal window**, run the following command to train the model over multiple epochs:
 
