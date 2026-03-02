@@ -51,15 +51,11 @@ for t in tokens
     println("$(Char(t)) ($(t)): $(get_stochastic_updates(tokens_probs[t]))")
 end
 
-if isfile(HV_PATH)
-    hvectors = deserialize(HV_PATH)
-else
-    hvectors::Dict{UInt8, BitVector} = Dict()
-    for hv in tokens
-        hvectors[hv] = random_hv(HV_DIMENSIONS, round(Int, HV_DIMENSIONS * (1 - 0.5^(1/NGRAM))))
-    end
-    serialize(HV_PATH, hvectors)
+hvectors::Dict{UInt8, BitVector} = Dict()
+for hv in tokens
+    hvectors[hv] = random_hv(HV_DIMENSIONS, round(Int, HV_DIMENSIONS * (1 - 0.5^(1/NGRAM))))
 end
+serialize(HV_PATH, hvectors)
 
 # Training the TM model
 local_acc = zeros(BUNDLE_ACC_TYPE, HV_DIMENSIONS)
