@@ -1,10 +1,24 @@
 export HDC
 
+using Random
 
+
+# Sparse
+function random_hv(dim::Int, k::Int)::BitVector
+    hv = falses(dim)
+    indices = randperm(dim)[1:k]
+    hv[indices] .= true
+    return hv
+end
+
+# Dense
 bind!(target::BitVector, source::BitVector) = (target .⊻= source)
 
-
-# Context subsampling
+# Sparse
+@inline function bundle_add!(acc::BitVector, hv::BitVector)::BitVector
+    acc .|= hv
+    return hv
+end
 
 # Zipf
 function compute_weights(n::Int, alpha::T)::Vector{T} where T<:AbstractFloat
@@ -41,9 +55,22 @@ function compute_weights_exp(n::Int, lambda::T)::Vector{T} where T<:AbstractFloa
 end
 
 
+@inline function gen_ngram(hvectors::Dict{UInt8, BitVector}, context::AbstractVector{UInt8}, scratch::BitVector, scratch2::BitVector)::BitVector
+    len = length(context)
+    fill!(scratch2.chunks, zero(UInt64))
+    @inbounds for i in eachindex(context)
+        dist_from_end = len + 1 - i
+        circshift!(scratch, hvectors[context[i]], dist_from_end)
+        bundle_add!(scratch2, scratch)
+    end
+    return scratch2
+end
+
+
 function gen_context_hvector!(
     acc::Vector{T},
     scratch::BitVector,
+    scratch2::BitVector,
     context_window::AbstractVector{UInt8},
     hvectors::Dict{UInt8, BitVector};
     alpha::T=ALPHA_CONTEXT
@@ -54,12 +81,12 @@ function gen_context_hvector!(
     # weights = compute_weights_exp(len, alpha)
     n = 1
     @inbounds for i in 1:len
-        if n > 1
+        if n > NGRAM - 1
             token = context_window[i]
             dist_from_end = len - i + 1
             weight = weights[dist_from_end]
-            circshift!(scratch, hvectors[token], dist_from_end)
-            bind!(scratch, hvectors[context_window[i - 1]])
+            hv = gen_ngram(hvectors, @view(context_window[i-NGRAM+1:i]), scratch, scratch2)
+            circshift!(scratch, hv, dist_from_end)
             w_pos = weight
             w_neg = -weight
             @simd for j in eachindex(scratch)

@@ -56,7 +56,7 @@ if isfile(HV_PATH)
 else
     hvectors::Dict{UInt8, BitVector} = Dict()
     for hv in tokens
-        hvectors[hv] = bitrand(HV_DIMENSIONS)
+        hvectors[hv] = random_hv(HV_DIMENSIONS, round(Int, HV_DIMENSIONS * (1 - 0.5^(1/NGRAM))))
     end
     serialize(HV_PATH, hvectors)
 end
@@ -64,7 +64,8 @@ end
 # Training the TM model
 local_acc = zeros(BUNDLE_ACC_TYPE, HV_DIMENSIONS)
 local_scratch = BitVector(undef, HV_DIMENSIONS)
-hv_sample = gen_context_hvector!(local_acc, local_scratch, @view(CORPUS[1:CONTEXT_SIZE]), hvectors)
+local_scratch2 = BitVector(undef, HV_DIMENSIONS)
+hv_sample = gen_context_hvector!(local_acc, local_scratch, local_scratch2, @view(CORPUS[1:CONTEXT_SIZE]), hvectors)
 x_sample = TMInput(hv_sample.chunks, hv_sample.len)
 y_samples = collect(keys(hvectors))
 tm = TMClassifier(x_sample, y_samples, CLAUSES, T, S, L=L, LF=LF, states_num=STATES_NUM, include_limit=INCLUDE_LIMIT)
@@ -82,13 +83,14 @@ all_time = @elapsed begin
             @threads for t_id in 1:nthreads()
                 local_acc = zeros(BUNDLE_ACC_TYPE, HV_DIMENSIONS)
                 local_scratch = BitVector(undef, HV_DIMENSIONS)
+                local_scratch2 = BitVector(undef, HV_DIMENSIONS)
                 while counter < SAMPLES_PER_EPOCH
                     start = rand(1:CORPUS_LENGTH - CONTEXT_SIZE - 1)
                     finish = start + CONTEXT_SIZE - 1
                     con = @view(CORPUS[start:finish])
                     # context = @view(con[rand(max(end - CONTEXT_SIZE + 1, 1):end):end])
                     context = con
-                    hv = gen_context_hvector!(local_acc, local_scratch, context, hvectors)
+                    hv = gen_context_hvector!(local_acc, local_scratch, local_scratch2, context, hvectors)
                     x = TMInput(hv.chunks, hv.len)
                     y = CORPUS[finish + 1]
                     @inbounds for _ in 1:get_stochastic_updates(tokens_probs[y])
