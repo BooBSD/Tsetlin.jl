@@ -64,9 +64,9 @@ Which way the sun the prince's dead;
 And then I will be so.
 ```
 
-If you want to train the text generator on your own corpus, remove `/tmp/tm_text.tm` and `/tmp/hvectors`, and replace `/tmp/input.txt` with your own text corpus.
+If you want to train the text generator on your own corpus, replace `/tmp/input.txt` with your own text corpus.
 
-Then rerun:
+Then rerun the command:
 
 ```shell
 julia -t auto examples/TEXT/train.jl
