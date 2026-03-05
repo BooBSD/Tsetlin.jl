@@ -143,3 +143,22 @@ benchmark(tm, x_test, y_test, 1000 * 4, warmup=true, index=false)
 This repository includes examples for *MNIST*, *Fashion-MNIST*, *CIFAR-10*, *AmazonSales*, *IMDb* sentiment analysis, *Noisy Parity Problem*, and *Shakespeare* character-level **text generation**.
 
 Instructions on how to run the examples can be found [here](https://github.com/BooBSD/Tsetlin.jl/tree/main/examples).
+
+## Citation
+
+If you use the Fuzzy-Pattern Tsetlin Machine in a scientific publication, please cite the following paper: [arXiv:2508.08350](https://arxiv.org/abs/2508.08350)
+
+#### BibTeX:
+```
+@article{hnilov2025fptm,
+    title={Fuzzy-Pattern Tsetlin Machine}, 
+    author={Artem Hnilov},
+    journal={arXiv preprint arXiv.2508.08350},
+    year={2025},
+    eprint={2508.08350},
+    archivePrefix={arXiv},
+    primaryClass={cs.LG},
+    url={https://arxiv.org/abs/2508.08350},
+    doi = {10.48550/arXiv.2508.08350},
+}
+```
