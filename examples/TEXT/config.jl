@@ -31,6 +31,11 @@ LF = 8192
 # L = 8192
 # LF = 8192
 
+# CLAUSES = 4  # Small 1 MB model.
+# T = 128 * 1
+# S = 16000
+# L = 8192
+# LF = 8192
 
 # isfile(CORPUS_PATH) || download(CORPUS_URL, CORPUS_PATH)
 # PROMPT = read(CORPUS_PATH)[1:CONTEXT_SIZE]

@@ -57,6 +57,24 @@ for hv in tokens
 end
 serialize(HV_PATH, hvectors)
 
+print("\nPreparing HV dataset... ")
+prepare_time = @elapsed begin
+    vhvs::Vector{Dict{Vector{UInt8}, TMInput}} = [Dict() for _ in 1:nthreads(:default)]
+    vlocal_acc::Vector{Vector{BUNDLE_ACC_TYPE}} = [zeros(BUNDLE_ACC_TYPE, HV_DIMENSIONS) for _ in 1:nthreads(:default)]
+    vlocal_scratch::Vector{BitVector} = [BitVector(undef, HV_DIMENSIONS) for _ in 1:nthreads(:default)]
+    vlocal_scratch2::Vector{BitVector} = [BitVector(undef, HV_DIMENSIONS) for _ in 1:nthreads(:default)]
+    @threads for start in 1:CORPUS_LENGTH - CONTEXT_SIZE - 1
+        tid = Threads.threadid() - Threads.nthreads(:interactive)
+        finish = start + CONTEXT_SIZE - 1
+        context = @view(CORPUS[start:finish])
+        hv = gen_context_hvector!(vlocal_acc[tid], vlocal_scratch[tid], vlocal_scratch2[tid], context, hvectors)
+        vhvs[tid][context] = TMInput(hv.chunks, hv.len)
+    end
+    hvs = merge(vhvs...)
+end
+prepare_time = Time(0) + Second(floor(Int, prepare_time))
+println("Done. Elapsed in $(prepare_time).")
+
 # Training the TM model
 local_acc = zeros(BUNDLE_ACC_TYPE, HV_DIMENSIONS)
 local_scratch = BitVector(undef, HV_DIMENSIONS)
@@ -86,8 +104,12 @@ all_time = @elapsed begin
                     con = @view(CORPUS[start:finish])
                     # context = @view(con[rand(max(end - CONTEXT_SIZE + 1, 1):end):end])
                     context = con
-                    hv = gen_context_hvector!(local_acc, local_scratch, local_scratch2, context, hvectors)
-                    x = TMInput(hv.chunks, hv.len)
+                    if haskey(hvs, context)
+                        x = hvs[context]
+                    else
+                        hv = gen_context_hvector!(local_acc, local_scratch, local_scratch2, context, hvectors)
+                        x = TMInput(hv.chunks, hv.len)
+                    end
                     y = CORPUS[finish + 1]
                     @inbounds for _ in 1:get_stochastic_updates(tokens_probs[y])
                         if counter >= SAMPLES_PER_EPOCH
@@ -100,7 +122,7 @@ all_time = @elapsed begin
             end
         end
         epoch_time = Time(0) + Second(floor(Int, epoch_time))
-        println("Epoch #$(epoch) elapsed in $(epoch_time)")
+        println("Epoch #$(epoch) elapsed in $(epoch_time).")
         save(compile(tm), TM_PATH)
     end
 end
