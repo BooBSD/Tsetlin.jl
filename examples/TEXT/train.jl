@@ -11,12 +11,12 @@ using .Tsetlin: TMInput, TMClassifier, train!, save, load, compile, literals_sum
 
 
 isfile(CORPUS_PATH) || download(CORPUS_URL, CORPUS_PATH)
-CORPUS = read(CORPUS_PATH)[1:TRAIN_SIZE]
-CORPUS_LENGTH = length(CORPUS)
-
-tokens = CORPUS |> unique |> sort # Sorted !!!!!!
+CORPUS_FULL = read(CORPUS_PATH)
+tokens = CORPUS_FULL |> unique |> sort # Sorted !!!!!!
 println("Characters: $(join(Char.(tokens)))\n")
 
+CORPUS = CORPUS_FULL[1:TRAIN_SIZE]
+CORPUS_LENGTH = length(CORPUS)
 
 function get_stochastic_updates(weight::Float64)::Int
     base_count = floor(Int, weight)
@@ -27,7 +27,7 @@ end
 
 tokens_count::Dict{UInt8, Int} = Dict()
 for t in tokens
-    tokens_count[t] = count(==(t), CORPUS)
+    tokens_count[t] = count(==(t), CORPUS_FULL)
 end
 
 
@@ -123,7 +123,9 @@ all_time = @elapsed begin
         end
         epoch_time = Time(0) + Second(floor(Int, epoch_time))
         println("Epoch #$(epoch) elapsed in $(epoch_time).")
-        save(compile(tm), TM_PATH)
+        if mod(epoch, SAVE_MODEL_EVERY_EPOCH) == 0
+            save(compile(tm), TM_PATH)
+        end
     end
 end
 elapsed = Time(0) + Second(floor(Int, all_time))

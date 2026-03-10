@@ -73,7 +73,8 @@ function gen_context_hvector!(
     scratch2::BitVector,
     context_window::AbstractVector{UInt8},
     hvectors::Dict{UInt8, BitVector};
-    alpha::T=ALPHA_CONTEXT
+    alpha::T=ALPHA_CONTEXT,
+    noise::T=zero(T)
 )::BitVector where T<:AbstractFloat
     len = length(context_window)
     fill!(acc, zero(T))
@@ -85,19 +86,21 @@ function gen_context_hvector!(
             token = context_window[i]
             dist_from_end = len - i + 1
             weight = weights[dist_from_end]
-            hv = gen_ngram(hvectors, @view(context_window[i-NGRAM+1:i]), scratch, scratch2)
-            circshift!(scratch, hv, dist_from_end)
             w_pos = weight
             w_neg = -weight
+            hv = gen_ngram(hvectors, @view(context_window[i-NGRAM+1:i]), scratch, scratch2)
+            circshift!(scratch, hv, dist_from_end)
             @simd for j in eachindex(scratch)
                 acc[j] += ifelse(scratch[j], w_pos, w_neg)
             end
         end
         n += 1
     end
-    # @inbounds @simd for j in 1:HV_DIMENSIONS
-    #     acc[j] += rand((0.02, -0.02))
-    # end
+    if noise != zero(T)
+        @inbounds @simd for j in 1:HV_DIMENSIONS
+            acc[j] += rand((noise, -noise))
+        end
+    end
     # return acc .> 0
     zero_val = zero(T)
     @inbounds for i in eachindex(acc)
