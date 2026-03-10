@@ -101,9 +101,10 @@ all_time = @elapsed begin
                 while counter < SAMPLES_PER_EPOCH
                     start = rand(1:CORPUS_LENGTH - CONTEXT_SIZE - 1)
                     finish = start + CONTEXT_SIZE - 1
-                    con = @view(CORPUS[start:finish])
-                    # context = @view(con[rand(max(end - CONTEXT_SIZE + 1, 1):end):end])
-                    context = con
+                    context = @view(CORPUS[start:finish])
+                    if RANDOMLY_REDUCE_CONTEXT_SIZE
+                        context = @view(context[rand(max(end - CONTEXT_SIZE + 1, 1):end):end])
+                    end
                     if haskey(hvs, context)
                         x = hvs[context]
                     else
