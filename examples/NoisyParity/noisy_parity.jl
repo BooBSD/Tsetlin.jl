@@ -26,20 +26,20 @@ y_test::Vector = Vector{Int8}(undef, length(test))
 end
 
 
-# CLAUSES = 16
-# T = 7
-# S = 12
-# L = 8
-# LF = 4
-
-CLAUSES = 200
-T = 20
+CLAUSES = 32
+T = 8
 S = 12
 L = 8
 LF = 4
 
+# CLAUSES = 128
+# T = 16
+# S = 12
+# L = 8
+# LF = 4
+
 EPOCHS = 1000
 
 # Training the TM model
-tm = TMClassifier(X_train[1], y_train, CLAUSES, T, S, L=L, LF=LF, states_num=256, include_limit=220)
+tm = TMClassifier(X_train[1], y_train, CLAUSES, T, S, L=L, LF=LF, states_num=256, include_limit=240)
 tms = train!(tm, X_train, y_train, X_test, y_test, EPOCHS, verbose=1)
