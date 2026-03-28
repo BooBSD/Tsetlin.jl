@@ -2,8 +2,7 @@ include("../../src/Tsetlin.jl")
 
 
 using Base.Threads
-using Serialization
-using .Tsetlin: TMInput, TMClassifier, train!, save
+using .Tsetlin: TMInput, TMClassifier, train!
 
 
 train = readlines("/tmp/NoisyParityTrainingData.txt")
