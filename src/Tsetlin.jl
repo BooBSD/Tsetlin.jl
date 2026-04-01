@@ -34,7 +34,7 @@ mutable struct TMInput <: AbstractTMInput
         end
         return new(chunks, len)
     end
-    
+
     function TMInput(x::AbstractArray{UInt64}, len::Int64)
         return new(copy(x), len)
     end
@@ -42,13 +42,21 @@ end
 
 Base.IndexStyle(::Type{<:TMInput}) = IndexLinear()
 Base.size(x::TMInput)::Tuple{Int64} = (x.len,)
-Base.getindex(x::TMInput, i::Int)::Bool = x.chunks[i]
 Base.sum(x::TMInput)::Int = sum(count_ones, x.chunks)
-@inline function Base.getindex(x::TMInput, i::Int)::Bool
+@inline function Base.getindex(x::TMInput, i::Int)
     @boundscheck checkbounds(x, i)
-    chunk_idx = (i - 1) >>> 6 + 1
+    chunk_idx = ((i - 1) >>> 6) + 1
     bit_idx = (i - 1) & 63
-    @inbounds return (x.chunks[chunk_idx] >> bit_idx) & 1 == 1
+    @inbounds return ((x.chunks[chunk_idx] >> bit_idx) & 1) == 1
+end
+@inline function Base.setindex!(x::TMInput, v, i::Int)
+    @boundscheck checkbounds(x, i)
+    val = convert(Bool, v)
+    chunk_idx = ((i - 1) >>> 6) + 1
+    bit_idx = (i - 1) & 63
+    mask = UInt64(1) << bit_idx
+    @inbounds x.chunks[chunk_idx] = (x.chunks[chunk_idx] & ~mask) | (UInt64(val) << bit_idx)
+    return x
 end
 
 
