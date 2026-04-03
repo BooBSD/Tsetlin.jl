@@ -63,6 +63,9 @@ end
 booleanize(x, ts...) = TMInput(vec(vec(x) .> reshape([ts...], 1, :)))
 
 
+const STATE_TYPES = (UInt8, UInt16)
+
+
 mutable struct TATeam{StateType}
     positive_clauses::Union{Matrix{StateType}, Nothing}
     negative_clauses::Union{Matrix{StateType}, Nothing}
@@ -120,12 +123,15 @@ mutable struct TMClassifier{ClassType, N, I, TMType}
     const clauses::TMType
 
     function TMClassifier(x::TMInput, Y::Vector, clauses_num::Int64, T::Int64, S::Int64; states_num::Int64=256, include_limit::Int64=128, L::Int64=16, LF::Int64=4)
+        state_max_available = maximum(typemax.(STATE_TYPES))
+        state_max = states_num - 1
+        @assert 2 <= states_num <= state_max_available + 1 "states_num must be between 2 to $(state_max_available + 1)."
+        @assert 1 <= include_limit <= state_max "include_limit must be between 1 to $(state_max)."
         ClassType = typeof(first(Y))
         N = length(x.chunks)
         I = ceil(Int, N / 64)
         s = round(Int, length(x) / S)
-        state_max = states_num - 1
-        StateType = ifelse(state_max <= typemax(UInt8), UInt8, UInt16)
+        StateType = STATE_TYPES[findfirst(T -> state_max <= typemax(T), STATE_TYPES)]
         if ClassType == Bool
             TMType = TATeam{StateType}
             clauses = TATeam{StateType}(length(x), clauses_num, include_limit, 0, state_max)
@@ -139,7 +145,7 @@ mutable struct TMClassifier{ClassType, N, I, TMType}
             end
             classes_num = length(unique(Y))
         end
-        return new{ClassType, N, I, TMType}(classes_num, clauses_num, T, S, s, L, LF, include_limit, 0, states_num - 1, clauses)
+        return new{ClassType, N, I, TMType}(classes_num, clauses_num, T, S, s, L, LF, include_limit, 0, state_max, clauses)
     end
 end
 
