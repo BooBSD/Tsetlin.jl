@@ -23,20 +23,22 @@ mutable struct TMInput <: AbstractTMInput
 
     function TMInput(x::AbstractArray{Bool})
         len = length(x)
-        chunks::Memory{UInt64} = Memory{UInt64}(undef, ceil(Int, len / 64))
+        chunks = Memory{UInt64}(undef, cld(len, 64))
+        idx = firstindex(x)
         @inbounds for i in eachindex(chunks)
-            chunk::UInt64 = zero(UInt64)
-            @inbounds @simd for ii in 0:min(63, len - (i - 1) * 64 - 1)
-                n = i * 64 - 63 + ii
-                chunk |= x[n] << ii
+            chunk = zero(UInt64)
+            for ii in 0:63
+                idx > len && break
+                chunk |= UInt64(x[idx]) << ii
+                idx += 1
             end
             chunks[i] = chunk
         end
         return new(chunks, len)
     end
 
-    function TMInput(x::AbstractArray{UInt64}, len::Int64)
-        return new(copy(x), len)
+    function TMInput(chunks::AbstractArray{UInt64}, len::Int64)
+        return new(chunks, len)
     end
 end
 
