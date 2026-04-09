@@ -22,7 +22,7 @@ for n in 1:TOKENS_GENERATE
         context = @view(context[rand(max(end - CONTEXT_SIZE + 1, 1):end):end])
     end
     hv = gen_context_hvector!(acc, local_scratch, local_scratch2, context, hvectors; noise=TEMPERATURE_NOISE)
-    push!(prompt_vector, predict(tm, TMInput(hv.chunks, hv.len)))
+    push!(prompt_vector, predict(tm, TMInput(hv.chunks.ref.mem, hv.len)))  # hv.chunks.ref.mem !!!
 
     print(Char(prompt_vector[n + length(prompt)]))
 end
