@@ -405,7 +405,7 @@ end
 # end
 
 
-function predict(tm::TMClassifier{ClassType}, X::Vector{TMInput}; index::Bool=true)::Vector{ClassType} where ClassType
+function predict(tm::TMClassifier{ClassType}, X::Vector{TMInput}; index::Bool=false)::Vector{ClassType} where ClassType
     predicted::Vector{ClassType} = Vector{ClassType}(undef, length(X))  # Predefine vector for @threads access
     @threads for i in eachindex(X)
         predicted[i] = predict(tm, X[i], index=index)
