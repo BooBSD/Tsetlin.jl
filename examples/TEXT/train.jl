@@ -58,11 +58,11 @@ end
 serialize(HV_PATH, hvectors)
 
 if RANDOMLY_REDUCE_CONTEXT_SIZE
-    println("\nSkipping preparing the HV dataset because RANDOMLY_REDUCE_CONTEXT_SIZE is set to true.")
+    println("\nSkipping preparing the HV cache because RANDOMLY_REDUCE_CONTEXT_SIZE is set to true.")
 else
-    print("\nPreparing HV dataset... ")
+    print("\nPreparing HV cache... ")
     prepare_time = @elapsed begin
-        vhvs::Vector{Dict{Vector{UInt8}, TMInput}} = [Dict() for _ in 1:nthreads(:default)]
+        hvs::Vector{TMInput} = Vector{TMInput}(undef, CORPUS_LENGTH - CONTEXT_SIZE - 1)
         vlocal_acc::Vector{Vector{BUNDLE_ACC_TYPE}} = [zeros(BUNDLE_ACC_TYPE, HV_DIMENSIONS) for _ in 1:nthreads(:default)]
         vlocal_scratch::Vector{BitVector} = [BitVector(undef, HV_DIMENSIONS) for _ in 1:nthreads(:default)]
         vlocal_scratch2::Vector{BitVector} = [BitVector(undef, HV_DIMENSIONS) for _ in 1:nthreads(:default)]
@@ -71,9 +71,8 @@ else
             finish = start + CONTEXT_SIZE - 1
             context = @view(CORPUS[start:finish])
             hv = gen_context_hvector!(vlocal_acc[tid], vlocal_scratch[tid], vlocal_scratch2[tid], context, hvectors)
-            vhvs[tid][context] = TMInput(hv.chunks, hv.len)
+            hvs[start] = TMInput(hv.chunks, hv.len)
         end
-        hvs = merge(vhvs...)
     end
     prepare_time = Time(0) + Second(floor(Int, prepare_time))
     println("Done. Elapsed in $(prepare_time).")
@@ -111,7 +110,7 @@ all_time = @elapsed begin
                         hv = gen_context_hvector!(local_acc, local_scratch, local_scratch2, context, hvectors)
                         x = TMInput(hv.chunks, hv.len)
                     else
-                        x = hvs[context]
+                        x = hvs[start]
                     end
                     y = CORPUS[finish + 1]
                     @inbounds for _ in 1:get_stochastic_updates(tokens_probs[y])
