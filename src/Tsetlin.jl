@@ -192,37 +192,25 @@ end
 function vote(tm::TMClassifier{<:Any, <:Any, <:Any, <:Any, C}, ta::TATeam, x::TMInput; index::Bool=false)::Tuple{Int64, Int64} where C
     pos::Int64 = 0
     neg::Int64 = 0
-    if index
-        @inbounds @simd for i in 1:C
-            pos += check_clause(tm, x, @view(ta.positive_included_literals[:, i]), @view(ta.positive_included_literals_inverted[:, i]), @view(ta.positive_included_literals_idx[:, i]))
-            neg += check_clause(tm, x, @view(ta.negative_included_literals[:, i]), @view(ta.negative_included_literals_inverted[:, i]), @view(ta.negative_included_literals_idx[:, i]))
-        end
-    else
+    if !index
         @inbounds @simd for i in 1:C
             pos += check_clause(tm, x, @view(ta.positive_included_literals[:, i]), @view(ta.positive_included_literals_inverted[:, i]))
             neg += check_clause(tm, x, @view(ta.negative_included_literals[:, i]), @view(ta.negative_included_literals_inverted[:, i]))
+        end
+    else
+        @inbounds @simd for i in 1:C
+            pos += check_clause(tm, x, @view(ta.positive_included_literals[:, i]), @view(ta.positive_included_literals_inverted[:, i]), @view(ta.positive_included_literals_idx[:, i]))
+            neg += check_clause(tm, x, @view(ta.negative_included_literals[:, i]), @view(ta.negative_included_literals_inverted[:, i]), @view(ta.negative_included_literals_idx[:, i]))
         end
     end
     return pos, neg
 end
 
 
-@inline function aux_update(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, j::Int64, c::SubArray{StateType}, ci::SubArray{StateType}, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64}, literals_idx::SubArray{UInt64}) where {N, StateType}
-    limit = ta.include_limit
-    last_N = 63 - ((N << 6) - ta.clause_size)
+@inline function update_index(tm::TMClassifier{<:Any, N}, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64}, literals_idx::SubArray{UInt64}) where N
     idx_mask = zero(UInt64)
     @inbounds for i in 1:N
-        a, b = zero(UInt64), zero(UInt64)
-        base = (i - 1) << 6
-        stop_bit = (i == N) ? last_N : 63
-        @simd for ii in 0:stop_bit
-            bit = one(UInt64) << ii
-            a |= (c[base + ii + 1] >= limit) ? bit : zero(UInt64)
-            b |= (ci[base + ii + 1] >= limit) ? bit : zero(UInt64)
-        end
-        literals[i], literals_inverted[i] = a, b
-
-        # Update index
+        a, b = literals[i], literals_inverted[i]
         if (a | b) != 0
             idx_mask |= (one(UInt64) << ((i - 1) & 63))
         end
@@ -248,127 +236,101 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
     update::Float64 = ifelse(positive, tm.T - v, tm.T + v) / (tm.T * 2)
 
     # Feedback 1
-    @inbounds for (j, (c, ci, l1, li1, l1_idx)) in enumerate(zip(eachcol(clauses1), eachcol(clauses_inverted1), eachcol(literals1), eachcol(literals_inverted1), eachcol(literals1_idx)))
-        if rand() < update
-            if (index ? check_clause(tm, x, l1, li1, l1_idx) : check_clause(tm, x, l1, li1)) > 0
-                if include_literals_sum(l1, li1, N) < tm.L
-                    # @inbounds for i = 1:ta.clause_size
-                    #     if (x.x[i] == true) && (c[i] < ta.state_max)
-                    #         c[i] += one(StateType)
-                    #     end
-                    #     if (x.x[i] == false) && (ci[i] < ta.state_max)
-                    #         ci[i] += one(StateType)
-                    #     end
-                    # end
-                    @inbounds @simd for i in 1:N
-                        pos::UInt64 = x.chunks[i]
-                        neg::UInt64 = ~x.chunks[i]
-                        base::Int64 = i * 64 - 63
-                        # Fast iterate over ones
-                        @inbounds while pos != zero(UInt64)
-                            ii::Int64 = trailing_zeros(pos)
-                            iii::Int64 = base + ii
-                            c[iii] += (c[iii] < ta.state_max)
-                            # l1[i] &= ~(1 << ii)
-                            # l1[i] |= (c[iii] >= ta.include_limit) << ii
-                            pos &= pos - one(UInt64)
-                        end
-                        @inbounds while neg != zero(UInt64)
-                            ii::Int64 = trailing_zeros(neg)
-                            iii::Int64 = base + ii
-                            ci[iii] += (ci[iii] < ta.state_max)
-                            # li1[i] &= ~(1 << ii)
-                            # li1[i] |= (ci[iii] >= ta.include_limit) << ii
-                            neg &= neg - one(UInt64)
-                        end
-                    end
-                end
+    @inbounds for (c, ci, l1, li1, l1_idx) in zip(eachcol(clauses1), eachcol(clauses_inverted1), eachcol(literals1), eachcol(literals_inverted1), eachcol(literals1_idx))
+        rand() < update || continue
+        if (!index ? check_clause(tm, x, l1, li1) : check_clause(tm, x, l1, li1, l1_idx)) > 0
+            if include_literals_sum(l1, li1, N) < tm.L
                 # @inbounds for i = 1:ta.clause_size
-                #     # No random
-                #     if (x.x[i] == false) && (c[i] < ta.include_limit) && (c[i] > ta.state_min)
-                #         c[i] -= one(StateType)
-                #     end
-                #     # No random
-                #     if (x.x[i] == true) && (ci[i] < ta.include_limit) && (ci[i] > ta.state_min)
-                #         ci[i] -= one(StateType)
-                #     end
-                # end
-                @inbounds @simd for i in 1:N
-                    pos::UInt64 = ~x.chunks[i] & ~l1[i]
-                    neg::UInt64 = x.chunks[i] & ~li1[i]
-                    base::Int64 = i * 64 - 63
-                    # Fast iterate over ones
-                    @inbounds while pos != zero(UInt64)
-                        ii::Int64 = trailing_zeros(pos)
-                        iii::Int64 = base + ii
-                        c[iii] -= (c[iii] > ta.state_min)
-                        # l1[i] &= ~(1 << ii)
-                        # l1[i] |= (c[iii] >= ta.include_limit) << ii
-                        pos &= pos - one(UInt64)
-                    end
-                    @inbounds while neg != zero(UInt64)
-                        ii::Int64 = trailing_zeros(neg)
-                        iii::Int64 = base + ii
-                        ci[iii] -= (ci[iii] > ta.state_min)
-                        # li1[i] &= ~(1 << ii)
-                        # li1[i] |= (ci[iii] >= ta.include_limit) << ii
-                        neg &= neg - one(UInt64)
-                    end
-                end
-            else
-                @inbounds for _ in 1:tm.s
-                    i = rand(1:ta.clause_size)  # Here's one random only.
-                    c[i] -= (c[i] > ta.state_min)
-                    # d, r = divrem(i + 63, 64)
-                    # l1[d] &= ~(1 << r)
-                    # l1[d] |= (c[i] >= ta.include_limit) << r
-                    i = rand(1:ta.clause_size)  # And here's another.
-                    ci[i] -= (ci[i] > ta.state_min)
-                    # d, r = divrem(i + 63, 64)
-                    # li1[d] &= ~(1 << r)
-                    # li1[d] |= (ci[i] >= ta.include_limit) << r
-                end
-            end
-            aux_update(tm, ta, j, c, ci, l1, li1, l1_idx)
-        end
-    end
-    # Feedback 2
-    @inbounds for (j, (c, ci, l2, li2, l2_idx)) in enumerate(zip(eachcol(clauses2), eachcol(clauses_inverted2), eachcol(literals2), eachcol(literals_inverted2), eachcol(literals2_idx)))
-        if rand() < update
-            if (index ? check_clause(tm, x, l2, li2, l2_idx) : check_clause(tm, x, l2, li2)) > 0
-                # @inbounds for i = 1:ta.clause_size
-                #     if (x.x[i] == false) && (c[i] < ta.include_limit)
+                #     if (x.x[i] == true) && (c[i] < ta.state_max)
                 #         c[i] += one(StateType)
                 #     end
-                #     if (x.x[i] == true) && (ci[i] < ta.include_limit)
+                #     if (x.x[i] == false) && (ci[i] < ta.state_max)
                 #         ci[i] += one(StateType)
                 #     end
                 # end
-                @inbounds @simd for i in 1:N
-                    pos::UInt64 = ~x.chunks[i] & ~l2[i]
-                    neg::UInt64 = x.chunks[i] & ~li2[i]
-                    base::Int64 = i * 64 - 63
-                    # Fast iterate over ones
-                    @inbounds while pos != zero(UInt64)
-                        ii::Int64 = trailing_zeros(pos)
-                        iii::Int64 = base + ii
-                        c[iii] += one(StateType)
-                        # l2[i] &= ~(1 << ii)
-                        # l2[i] |= (c[iii] >= ta.include_limit) << ii
-                        pos &= pos - one(UInt64)
+                @inbounds for i in 1:N
+                    pos = x.chunks[i]
+                    neg = ~x.chunks[i]
+                    l_mask = li_mask = zero(UInt64)
+                    base = i * 64 - 63
+                    @simd for ii in 0:63
+                        iii = base + ii
+                        c[iii]  += StateType((c[iii]  < ta.state_max) & (pos >> ii))
+                        ci[iii] += StateType((ci[iii] < ta.state_max) & (neg >> ii))
+                        l_mask  |= UInt64(c[iii]  >= ta.include_limit) << ii
+                        li_mask |= UInt64(ci[iii] >= ta.include_limit) << ii
                     end
-                    @inbounds while neg != zero(UInt64)
-                        ii::Int64 = trailing_zeros(neg)
-                        iii::Int64 = base + ii
-                        ci[iii] += one(StateType)
-                        # li2[i] &= ~(1 << ii)
-                        # li2[i] |= (ci[iii] >= ta.include_limit) << ii
-                        neg &= neg - one(UInt64)
-                    end
+                    l1[i]  = (l1[i]  & ~pos) | (l_mask  & pos)
+                    li1[i] = (li1[i] & ~neg) | (li_mask & neg)
                 end
-                aux_update(tm, ta, j, c, ci, l2, li2, l2_idx)
+            end
+            # @inbounds for i = 1:ta.clause_size
+            #     # No random
+            #     if (x.x[i] == false) && (c[i] < ta.include_limit) && (c[i] > ta.state_min)
+            #         c[i] -= one(StateType)
+            #     end
+            #     # No random
+            #     if (x.x[i] == true) && (ci[i] < ta.include_limit) && (ci[i] > ta.state_min)
+            #         ci[i] -= one(StateType)
+            #     end
+            # end
+            @inbounds for i in 1:N
+                pos = ~x.chunks[i] & ~l1[i]
+                neg = x.chunks[i] & ~li1[i]
+                l_mask = li_mask = zero(UInt64)
+                base = i * 64 - 63
+                @simd for ii in 0:63
+                    iii = base + ii
+                    c[iii]  -= StateType((c[iii]  > ta.state_min) & (pos >> ii))
+                    ci[iii] -= StateType((ci[iii] > ta.state_min) & (neg >> ii))
+                    l_mask  |= UInt64(c[iii]  >= ta.include_limit) << ii
+                    li_mask |= UInt64(ci[iii] >= ta.include_limit) << ii
+                end
+                l1[i]  = (l1[i]  & ~pos) | (l_mask  & pos)
+                li1[i] = (li1[i] & ~neg) | (li_mask & neg)
+            end
+        else
+            @inbounds for _ in 1:tm.s
+                i = rand(1:ta.clause_size)  # Here's one random only.
+                c[i] -= (c[i] > ta.state_min)
+                d, r = divrem(i + 63, 64)
+                l1[d] = l1[d] & ~(1 << r) | (c[i] >= ta.include_limit) << r
+                i = rand(1:ta.clause_size)  # And here's another.
+                ci[i] -= (ci[i] > ta.state_min)
+                d, r = divrem(i + 63, 64)
+                li1[d] = li1[d] & ~(1 << r) | (ci[i] >= ta.include_limit) << r
             end
         end
+        index && update_index(tm, l1, li1, l1_idx)
+    end
+    # Feedback 2
+    @inbounds for (c, ci, l2, li2, l2_idx) in zip(eachcol(clauses2), eachcol(clauses_inverted2), eachcol(literals2), eachcol(literals_inverted2), eachcol(literals2_idx))
+        rand() < update || continue
+        (!index ? check_clause(tm, x, l2, li2) : check_clause(tm, x, l2, li2, l2_idx)) > 0 || continue
+        # @inbounds for i = 1:ta.clause_size
+        #     if (x.x[i] == false) && (c[i] < ta.include_limit)
+        #         c[i] += one(StateType)
+        #     end
+        #     if (x.x[i] == true) && (ci[i] < ta.include_limit)
+        #         ci[i] += one(StateType)
+        #     end
+        # end
+        @inbounds for i in 1:N
+            pos = ~x.chunks[i] & ~l2[i]
+            neg = x.chunks[i] & ~li2[i]
+            l_mask = li_mask = zero(UInt64)
+            base = i * 64 - 63
+            @simd for ii in 0:63
+                iii = base + ii
+                c[iii]  += StateType((pos >> ii) & one(UInt64))
+                ci[iii] += StateType((neg >> ii) & one(UInt64))
+                l_mask  |= UInt64(c[iii]  >= ta.include_limit) << ii
+                li_mask |= UInt64(ci[iii] >= ta.include_limit) << ii
+            end
+            l2[i]  = (l2[i]  & ~pos) | (l_mask  & pos)
+            li2[i] = (li2[i] & ~neg) | (li_mask & neg)
+        end
+        index && update_index(tm, l2, li2, l2_idx)
     end
 end
 
