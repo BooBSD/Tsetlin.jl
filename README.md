@@ -6,12 +6,12 @@
 *Fred Wilson*
 
 This repository provides an alternative [Fuzzy-Pattern Tsetlin Machine](https://github.com/BooBSD/FuzzyPatternTM) implementation with zero external dependencies and blazingly fast performance.
-It achieves over **32 million** MNIST predictions per second at 98% accuracy, with a throughput of **4 GB/s** on a desktop CPU.
+It achieves over **33 million** MNIST predictions per second at 98% accuracy, with a throughput of **4.2 GB/s** on a desktop CPU.
 
 
 ## Key Features
 
-  - Up to **10× faster training** and **34× faster inference** compared to the original FPTM implementation, achieved through the use of bitwise operations, SIMD instructions, and a specialized memory layout.
+  - Up to **10× faster training** and **35× faster inference** compared to the original FPTM implementation, achieved through the use of bitwise operations, SIMD instructions, and a specialized memory layout.
   - Binary classifier.
   - Multi-class classifier.
   - Single-threaded and multi-threaded training and inference.
