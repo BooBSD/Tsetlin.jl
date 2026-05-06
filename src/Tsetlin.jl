@@ -211,7 +211,7 @@ end
 
 
 @inline function aux_update(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, j::Int64, c::SubArray{StateType}, ci::SubArray{StateType}, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64}, literals_sum::Memory{Int64}, literals_idx::SubArray{UInt64}) where {N, StateType}
-    limit, LF, lsum = ta.include_limit, tm.LF, 0
+    limit, lsum = ta.include_limit, 0
     last_N = 63 - ((N << 6) - ta.clause_size)
     idx_mask = zero(UInt64)
     @inbounds for i in 1:N
