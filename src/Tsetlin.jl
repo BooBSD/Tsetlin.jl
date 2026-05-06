@@ -81,8 +81,6 @@ mutable struct TATeam{StateType}
     const negative_included_literals_inverted::Matrix{UInt64}
     const positive_included_literals_sum::Memory{Int64}
     const negative_included_literals_sum::Memory{Int64}
-    const positive_included_literals_sum_clamp::Memory{Int64}
-    const negative_included_literals_sum_clamp::Memory{Int64}
     const clause_size::Int64
     const include_limit::StateType
     const state_min::StateType
@@ -104,9 +102,7 @@ mutable struct TATeam{StateType}
         negative_included_literals_inverted = fill(zero(UInt64), chunks_size, ta_clauses_num)
         positive_included_literals_sum = zeros(Int64, ta_clauses_num)
         negative_included_literals_sum = zeros(Int64, ta_clauses_num)
-        positive_included_literals_sum_clamp = zeros(Int64, ta_clauses_num)
-        negative_included_literals_sum_clamp = zeros(Int64, ta_clauses_num)
-        return new{StateType}(positive_clauses, negative_clauses, positive_clauses_inverted, negative_clauses_inverted, positive_included_literals_idx, negative_included_literals_idx, positive_included_literals, negative_included_literals, positive_included_literals_inverted, negative_included_literals_inverted, positive_included_literals_sum, negative_included_literals_sum, positive_included_literals_sum_clamp, negative_included_literals_sum_clamp, clause_size, include_limit, state_min, state_max)
+        return new{StateType}(positive_clauses, negative_clauses, positive_clauses_inverted, negative_clauses_inverted, positive_included_literals_idx, negative_included_literals_idx, positive_included_literals, negative_included_literals, positive_included_literals_inverted, negative_included_literals_inverted, positive_included_literals_sum, negative_included_literals_sum, clause_size, include_limit, state_min, state_max)
     end
 end
 
@@ -152,14 +148,14 @@ mutable struct TMClassifier{ClassType, N, I, TMType}
 end
 
 
-@inline function check_clause(tm::TMClassifier{<:Any, <:Any, I}, x::TMInput, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64}, literals_sum_clamp::Int64, literals_idx::SubArray{UInt64})::Int64 where I
-    c::Int64 = 0
+@inline function check_clause(tm::TMClassifier{<:Any, <:Any, I}, x::TMInput, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64}, literals_idx::SubArray{UInt64})::Int64 where I
+    c::Int64 = tm.LF
     p_idx = pointer(literals_idx, 1)
     p_chunks = pointer(x.chunks, 1)
     p_lits = pointer(literals, 1)
     p_lits_inv = pointer(literals_inverted, 1)
     @inbounds for i in 1:I
-        (c >= literals_sum_clamp) && return 0  # helps for huge inputs
+        (c <= 0) && return 0  # helps for huge inputs
         idx = unsafe_load(p_idx, i)
         base::Int64 = i * 64 - 63
         # @inbounds while idx != 0
@@ -169,7 +165,7 @@ end
         #     lit = unsafe_load(p_lits, chunk_idx)
         #     lit_inv = unsafe_load(p_lits_inv, chunk_idx)
         #     val = (~x_chunk & lit) | (x_chunk & lit_inv)
-        #     c += count_ones(val)
+        #     c -= count_ones(val)
         #     idx &= idx - 1
         # end
         @inbounds for n in 0:63  # Faster on a big sparse inputs
@@ -179,20 +175,20 @@ end
             lit = unsafe_load(p_lits, chunk_idx)
             lit_inv = unsafe_load(p_lits_inv, chunk_idx)
             val = (~x_chunk & lit) | (x_chunk & lit_inv)
-            c += count_ones(val)
+            c -= count_ones(val)
         end
     end
-    return max(literals_sum_clamp - c, 0)
+    return max(0, c)
 end
 
 
-@inline function check_clause(tm::TMClassifier{<:Any, N}, x::TMInput, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64}, literals_sum_clamp::Int64)::Int64 where N
-    c::Int64 = 0
+@inline function check_clause(tm::TMClassifier{<:Any, N}, x::TMInput, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64})::Int64 where N
+    c::Int64 = tm.LF
     @inbounds for i in 1:N
         val = (~x.chunks[i] & literals[i]) | (x.chunks[i] & literals_inverted[i])
-        c += count_ones(val)
+        c -= count_ones(val)
     end
-    return max(literals_sum_clamp - c, 0)
+    return max(0, c)
 end
 
 
@@ -200,21 +196,21 @@ function vote(tm::TMClassifier, ta::TATeam, x::TMInput; index::Bool=false)::Tupl
     pos::Int64 = 0
     neg::Int64 = 0
     if index
-        @inbounds @simd for i in eachindex(ta.positive_included_literals_sum_clamp)
-            pos += check_clause(tm, x, @view(ta.positive_included_literals[:, i]), @view(ta.positive_included_literals_inverted[:, i]), ta.positive_included_literals_sum_clamp[i], @view(ta.positive_included_literals_idx[:, i]))
-            neg += check_clause(tm, x, @view(ta.negative_included_literals[:, i]), @view(ta.negative_included_literals_inverted[:, i]), ta.negative_included_literals_sum_clamp[i], @view(ta.negative_included_literals_idx[:, i]))
+        @inbounds @simd for i in eachindex(ta.positive_included_literals_sum)
+            pos += check_clause(tm, x, @view(ta.positive_included_literals[:, i]), @view(ta.positive_included_literals_inverted[:, i]), @view(ta.positive_included_literals_idx[:, i]))
+            neg += check_clause(tm, x, @view(ta.negative_included_literals[:, i]), @view(ta.negative_included_literals_inverted[:, i]), @view(ta.negative_included_literals_idx[:, i]))
         end
     else
-        @inbounds @simd for i in eachindex(ta.positive_included_literals_sum_clamp)
-            pos += check_clause(tm, x, @view(ta.positive_included_literals[:, i]), @view(ta.positive_included_literals_inverted[:, i]), ta.positive_included_literals_sum_clamp[i])
-            neg += check_clause(tm, x, @view(ta.negative_included_literals[:, i]), @view(ta.negative_included_literals_inverted[:, i]), ta.negative_included_literals_sum_clamp[i])
+        @inbounds @simd for i in eachindex(ta.positive_included_literals_sum)
+            pos += check_clause(tm, x, @view(ta.positive_included_literals[:, i]), @view(ta.positive_included_literals_inverted[:, i]))
+            neg += check_clause(tm, x, @view(ta.negative_included_literals[:, i]), @view(ta.negative_included_literals_inverted[:, i]))
         end
     end
     return pos, neg
 end
 
 
-@inline function aux_update(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, j::Int64, c::SubArray{StateType}, ci::SubArray{StateType}, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64}, literals_sum::Memory{Int64}, literals_sum_clamp::Memory{Int64}, literals_idx::SubArray{UInt64}) where {N, StateType}
+@inline function aux_update(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, j::Int64, c::SubArray{StateType}, ci::SubArray{StateType}, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64}, literals_sum::Memory{Int64}, literals_idx::SubArray{UInt64}) where {N, StateType}
     limit, LF, lsum = ta.include_limit, tm.LF, 0
     last_N = 63 - ((N << 6) - ta.clause_size)
     idx_mask = zero(UInt64)
@@ -240,18 +236,17 @@ end
         end
     end
     literals_sum[j] = lsum
-    literals_sum_clamp[j] = ifelse(0 < lsum < LF, lsum, LF)
 end
 
 
-function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput, clauses1::Matrix{StateType}, clauses_inverted1::Matrix{StateType}, clauses2::Matrix{StateType}, clauses_inverted2::Matrix{StateType}, literals1::Matrix{UInt64}, literals_inverted1::Matrix{UInt64}, literals2::Matrix{UInt64}, literals_inverted2::Matrix{UInt64}, literals1_sum::Memory{Int64}, literals1_sum_clamp::Memory{Int64}, literals2_sum::Memory{Int64}, literals2_sum_clamp::Memory{Int64}, literals1_idx::Matrix{UInt64}, literals2_idx::Matrix{UInt64}, positive::Bool, index::Bool) where {N, StateType}
+function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput, clauses1::Matrix{StateType}, clauses_inverted1::Matrix{StateType}, clauses2::Matrix{StateType}, clauses_inverted2::Matrix{StateType}, literals1::Matrix{UInt64}, literals_inverted1::Matrix{UInt64}, literals2::Matrix{UInt64}, literals_inverted2::Matrix{UInt64}, literals1_sum::Memory{Int64}, literals2_sum::Memory{Int64}, literals1_idx::Matrix{UInt64}, literals2_idx::Matrix{UInt64}, positive::Bool, index::Bool) where {N, StateType}
     v::Int64 = clamp(-(vote(tm, ta, x, index=index)...), -tm.T, tm.T)
     update::Float64 = ifelse(positive, tm.T - v, tm.T + v) / (tm.T * 2)
 
     # Feedback 1
     @inbounds for (j, (c, ci, l1, li1, l1_idx)) in enumerate(zip(eachcol(clauses1), eachcol(clauses_inverted1), eachcol(literals1), eachcol(literals_inverted1), eachcol(literals1_idx)))
         if rand() < update
-            if (index ? check_clause(tm, x, l1, li1, literals1_sum_clamp[j], l1_idx) : check_clause(tm, x, l1, li1, literals1_sum_clamp[j])) > 0
+            if (index ? check_clause(tm, x, l1, li1, l1_idx) : check_clause(tm, x, l1, li1)) > 0
                 if literals1_sum[j] < tm.L
                     # @inbounds for i = 1:ta.clause_size
                     #     if (x.x[i] == true) && (c[i] < ta.state_max)
@@ -330,13 +325,13 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
                     # li1[d] |= (ci[i] >= ta.include_limit) << r
                 end
             end
-            aux_update(tm, ta, j, c, ci, l1, li1, literals1_sum, literals1_sum_clamp, l1_idx)
+            aux_update(tm, ta, j, c, ci, l1, li1, literals1_sum, l1_idx)
         end
     end
     # Feedback 2
     @inbounds for (j, (c, ci, l2, li2, l2_idx)) in enumerate(zip(eachcol(clauses2), eachcol(clauses_inverted2), eachcol(literals2), eachcol(literals_inverted2), eachcol(literals2_idx)))
         if rand() < update
-            if (index ? check_clause(tm, x, l2, li2, literals2_sum_clamp[j], l2_idx) : check_clause(tm, x, l2, li2, literals2_sum_clamp[j])) > 0
+            if (index ? check_clause(tm, x, l2, li2, l2_idx) : check_clause(tm, x, l2, li2)) > 0
                 # @inbounds for i = 1:ta.clause_size
                 #     if (x.x[i] == false) && (c[i] < ta.include_limit)
                 #         c[i] += one(StateType)
@@ -367,7 +362,7 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
                         neg &= neg - one(UInt64)
                     end
                 end
-                aux_update(tm, ta, j, c, ci, l2, li2, literals2_sum, literals2_sum_clamp, l2_idx)
+                aux_update(tm, ta, j, c, ci, l2, li2, literals2_sum, l2_idx)
             end
         end
     end
@@ -423,19 +418,19 @@ end
 function train!(tm::TMClassifier{ClassType}, x::TMInput, y::ClassType; index::Bool=false) where ClassType <: Bool
     ta = tm.clauses
     if y == true
-        feedback!(tm, ta, x, ta.positive_clauses, ta.positive_clauses_inverted, ta.negative_clauses, ta.negative_clauses_inverted, ta.positive_included_literals, ta.positive_included_literals_inverted, ta.negative_included_literals, ta.negative_included_literals_inverted, ta.positive_included_literals_sum, ta.positive_included_literals_sum_clamp, ta.negative_included_literals_sum, ta.negative_included_literals_sum_clamp, ta.positive_included_literals_idx, ta.negative_included_literals_idx, true, index)
+        feedback!(tm, ta, x, ta.positive_clauses, ta.positive_clauses_inverted, ta.negative_clauses, ta.negative_clauses_inverted, ta.positive_included_literals, ta.positive_included_literals_inverted, ta.negative_included_literals, ta.negative_included_literals_inverted, ta.positive_included_literals_sum, ta.negative_included_literals_sum, ta.positive_included_literals_idx, ta.negative_included_literals_idx, true, index)
     else
-        feedback!(tm, ta, x, ta.negative_clauses, ta.negative_clauses_inverted, ta.positive_clauses, ta.positive_clauses_inverted, ta.negative_included_literals, ta.negative_included_literals_inverted, ta.positive_included_literals, ta.positive_included_literals_inverted, ta.negative_included_literals_sum, ta.negative_included_literals_sum_clamp, ta.positive_included_literals_sum, ta.positive_included_literals_sum_clamp, ta.negative_included_literals_idx, ta.positive_included_literals_idx, false, index)
+        feedback!(tm, ta, x, ta.negative_clauses, ta.negative_clauses_inverted, ta.positive_clauses, ta.positive_clauses_inverted, ta.negative_included_literals, ta.negative_included_literals_inverted, ta.positive_included_literals, ta.positive_included_literals_inverted, ta.negative_included_literals_sum, ta.positive_included_literals_sum, ta.negative_included_literals_idx, ta.positive_included_literals_idx, false, index)
     end
 end
 
 
 function train!(tm::TMClassifier{ClassType}, x::TMInput, y::ClassType; index::Bool=false) where ClassType
     ta1::TATeam = tm.clauses[y]
-    feedback!(tm, ta1, x, ta1.positive_clauses, ta1.positive_clauses_inverted, ta1.negative_clauses, ta1.negative_clauses_inverted, ta1.positive_included_literals, ta1.positive_included_literals_inverted, ta1.negative_included_literals, ta1.negative_included_literals_inverted, ta1.positive_included_literals_sum, ta1.positive_included_literals_sum_clamp, ta1.negative_included_literals_sum, ta1.negative_included_literals_sum_clamp, ta1.positive_included_literals_idx, ta1.negative_included_literals_idx, true, index)
+    feedback!(tm, ta1, x, ta1.positive_clauses, ta1.positive_clauses_inverted, ta1.negative_clauses, ta1.negative_clauses_inverted, ta1.positive_included_literals, ta1.positive_included_literals_inverted, ta1.negative_included_literals, ta1.negative_included_literals_inverted, ta1.positive_included_literals_sum, ta1.negative_included_literals_sum, ta1.positive_included_literals_idx, ta1.negative_included_literals_idx, true, index)
     @inbounds for (cls, ta) in tm.clauses
         if cls !== y
-            feedback!(tm, ta, x, ta.negative_clauses, ta.negative_clauses_inverted, ta.positive_clauses, ta.positive_clauses_inverted, ta.negative_included_literals, ta.negative_included_literals_inverted, ta.positive_included_literals, ta.positive_included_literals_inverted, ta.negative_included_literals_sum, ta.negative_included_literals_sum_clamp, ta.positive_included_literals_sum, ta.positive_included_literals_sum_clamp, ta.negative_included_literals_idx, ta.positive_included_literals_idx, false, index)
+            feedback!(tm, ta, x, ta.negative_clauses, ta.negative_clauses_inverted, ta.positive_clauses, ta.positive_clauses_inverted, ta.negative_included_literals, ta.negative_included_literals_inverted, ta.positive_included_literals, ta.positive_included_literals_inverted, ta.negative_included_literals_sum, ta.positive_included_literals_sum, ta.negative_included_literals_idx, ta.positive_included_literals_idx, false, index)
         end
     end
 end
@@ -445,8 +440,8 @@ end
 #     cls = rand([c for c in keys(tm.clauses) if c != y])
 #     target = tm.clauses[y]
 #     opposite = tm.clauses[cls]
-#     feedback!(tm, target, x, target.positive_clauses, target.positive_clauses_inverted, target.negative_clauses, target.negative_clauses_inverted, target.positive_included_literals, target.positive_included_literals_inverted, target.negative_included_literals, target.negative_included_literals_inverted, target.positive_included_literals_sum, target.positive_included_literals_sum_clamp, target.negative_included_literals_sum, target.negative_included_literals_sum_clamp, target.positive_included_literals_idx, target.negative_included_literals_idx, true, index)
-#     feedback!(tm, opposite, x, opposite.negative_clauses, opposite.negative_clauses_inverted, opposite.positive_clauses, opposite.positive_clauses_inverted, opposite.negative_included_literals, opposite.negative_included_literals_inverted, opposite.positive_included_literals, opposite.positive_included_literals_inverted, opposite.negative_included_literals_sum, opposite.negative_included_literals_sum_clamp, opposite.positive_included_literals_sum, opposite.positive_included_literals_sum_clamp, opposite.negative_included_literals_idx, opposite.positive_included_literals_idx, false, index)
+#     feedback!(tm, target, x, target.positive_clauses, target.positive_clauses_inverted, target.negative_clauses, target.negative_clauses_inverted, target.positive_included_literals, target.positive_included_literals_inverted, target.negative_included_literals, target.negative_included_literals_inverted, target.positive_included_literals_sum, target.negative_included_literals_sum, target.positive_included_literals_idx, target.negative_included_literals_idx, true, index)
+#     feedback!(tm, opposite, x, opposite.negative_clauses, opposite.negative_clauses_inverted, opposite.positive_clauses, opposite.positive_clauses_inverted, opposite.negative_included_literals, opposite.negative_included_literals_inverted, opposite.positive_included_literals, opposite.positive_included_literals_inverted, opposite.negative_included_literals_sum, opposite.positive_included_literals_sum, opposite.negative_included_literals_idx, opposite.positive_included_literals_idx, false, index)
 # end
 
 
@@ -462,8 +457,8 @@ end
 #             end
 #         end
 #     end
-#     feedback!(tm, tm.clauses[y], x, tm.clauses[y].positive_clauses, tm.clauses[y].positive_clauses_inverted, tm.clauses[y].negative_clauses, tm.clauses[y].negative_clauses_inverted, tm.clauses[y].positive_included_literals, tm.clauses[y].positive_included_literals_inverted, tm.clauses[y].negative_included_literals, tm.clauses[y].negative_included_literals_inverted, tm.clauses[y].positive_included_literals_sum, tm.clauses[y].positive_included_literals_sum_clamp, tm.clauses[y].negative_included_literals_sum, tm.clauses[y].negative_included_literals_sum_clamp, tm.clauses[y].positive_included_literals_idx, tm.clauses[y].negative_included_literals_idx, true, index)
-#     feedback!(tm, tm.clauses[cls], x, tm.clauses[cls].negative_clauses, tm.clauses[cls].negative_clauses_inverted, tm.clauses[cls].positive_clauses, tm.clauses[cls].positive_clauses_inverted, tm.clauses[cls].negative_included_literals, tm.clauses[cls].negative_included_literals_inverted, tm.clauses[cls].positive_included_literals, tm.clauses[cls].positive_included_literals_inverted, tm.clauses[cls].negative_included_literals_sum, tm.clauses[cls].negative_included_literals_sum_clamp, tm.clauses[cls].positive_included_literals_sum, tm.clauses[cls].positive_included_literals_sum_clamp, tm.clauses[cls].negative_included_literals_idx, tm.clauses[cls].positive_included_literals_idx, false, index)
+#     feedback!(tm, tm.clauses[y], x, tm.clauses[y].positive_clauses, tm.clauses[y].positive_clauses_inverted, tm.clauses[y].negative_clauses, tm.clauses[y].negative_clauses_inverted, tm.clauses[y].positive_included_literals, tm.clauses[y].positive_included_literals_inverted, tm.clauses[y].negative_included_literals, tm.clauses[y].negative_included_literals_inverted, tm.clauses[y].positive_included_literals_sum, tm.clauses[y].negative_included_literals_sum, tm.clauses[y].positive_included_literals_idx, tm.clauses[y].negative_included_literals_idx, true, index)
+#     feedback!(tm, tm.clauses[cls], x, tm.clauses[cls].negative_clauses, tm.clauses[cls].negative_clauses_inverted, tm.clauses[cls].positive_clauses, tm.clauses[cls].positive_clauses_inverted, tm.clauses[cls].negative_included_literals, tm.clauses[cls].negative_included_literals_inverted, tm.clauses[cls].positive_included_literals, tm.clauses[cls].positive_included_literals_inverted, tm.clauses[cls].negative_included_literals_sum, tm.clauses[cls].positive_included_literals_sum, tm.clauses[cls].negative_included_literals_idx, tm.clauses[cls].positive_included_literals_idx, false, index)
 # end
 
 
