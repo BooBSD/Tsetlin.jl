@@ -181,7 +181,7 @@ end
 
 @inline function check_clause(tm::TMClassifier{<:Any, N}, x::TMInput, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64})::Int64 where N
     c::Int64 = tm.LF
-    @inbounds for i in 1:N
+    @inbounds @simd for i in 1:N
         val = (~x.chunks[i] & literals[i]) | (x.chunks[i] & literals_inverted[i])
         c -= count_ones(val)
     end
@@ -193,12 +193,12 @@ function vote(tm::TMClassifier{<:Any, <:Any, <:Any, <:Any, C}, ta::TATeam, x::TM
     pos::Int64 = 0
     neg::Int64 = 0
     if !index
-        @inbounds @simd for i in 1:C
+        @inbounds for i in 1:C
             pos += check_clause(tm, x, @view(ta.positive_included_literals[:, i]), @view(ta.positive_included_literals_inverted[:, i]))
             neg += check_clause(tm, x, @view(ta.negative_included_literals[:, i]), @view(ta.negative_included_literals_inverted[:, i]))
         end
     else
-        @inbounds @simd for i in 1:C
+        @inbounds for i in 1:C
             pos += check_clause(tm, x, @view(ta.positive_included_literals[:, i]), @view(ta.positive_included_literals_inverted[:, i]), @view(ta.positive_included_literals_idx[:, i]))
             neg += check_clause(tm, x, @view(ta.negative_included_literals[:, i]), @view(ta.negative_included_literals_inverted[:, i]), @view(ta.negative_included_literals_idx[:, i]))
         end
@@ -234,6 +234,7 @@ end
 function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput, clauses1::Matrix{StateType}, clauses_inverted1::Matrix{StateType}, clauses2::Matrix{StateType}, clauses_inverted2::Matrix{StateType}, literals1::Matrix{UInt64}, literals_inverted1::Matrix{UInt64}, literals2::Matrix{UInt64}, literals_inverted2::Matrix{UInt64}, literals1_idx::Matrix{UInt64}, literals2_idx::Matrix{UInt64}, positive::Bool, index::Bool) where {N, StateType}
     v::Int64 = clamp(-(vote(tm, ta, x, index=index)...), -tm.T, tm.T)
     update::Float64 = ifelse(positive, tm.T - v, tm.T + v) / (tm.T * 2)
+    last_bit = 63 - ((N << 6) - ta.clause_size)
 
     # Feedback 1
     @inbounds for (c, ci, l1, li1, l1_idx) in zip(eachcol(clauses1), eachcol(clauses_inverted1), eachcol(literals1), eachcol(literals_inverted1), eachcol(literals1_idx))
@@ -253,7 +254,8 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
                     neg = ~x.chunks[i]
                     l_mask = li_mask = zero(UInt64)
                     base = i * 64 - 63
-                    @simd for ii in 0:63
+                    stop_bit = ifelse(i == N, last_bit , 63)
+                    @simd for ii in 0:stop_bit
                         iii = base + ii
                         c[iii]  += StateType((c[iii]  < ta.state_max) & (pos >> ii))
                         ci[iii] += StateType((ci[iii] < ta.state_max) & (neg >> ii))
@@ -279,7 +281,8 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
                 neg = x.chunks[i] & ~li1[i]
                 l_mask = li_mask = zero(UInt64)
                 base = i * 64 - 63
-                @simd for ii in 0:63
+                stop_bit = ifelse(i == N, last_bit , 63)
+                @simd for ii in 0:stop_bit
                     iii = base + ii
                     c[iii]  -= StateType((c[iii]  > ta.state_min) & (pos >> ii))
                     ci[iii] -= StateType((ci[iii] > ta.state_min) & (neg >> ii))
@@ -320,7 +323,8 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
             neg = x.chunks[i] & ~li2[i]
             l_mask = li_mask = zero(UInt64)
             base = i * 64 - 63
-            @simd for ii in 0:63
+            stop_bit = ifelse(i == N, last_bit , 63)
+            @simd for ii in 0:stop_bit
                 iii = base + ii
                 c[iii]  += StateType((pos >> ii) & one(UInt64))
                 ci[iii] += StateType((neg >> ii) & one(UInt64))
