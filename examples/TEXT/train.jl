@@ -61,21 +61,21 @@ if RANDOMLY_REDUCE_CONTEXT_SIZE
     println("\nSkipping preparing the HV cache because RANDOMLY_REDUCE_CONTEXT_SIZE is set to true.")
 else
     print("\nPreparing HV cache... ")
+    n = CORPUS_LENGTH - CONTEXT_SIZE - 1
+    n_default = Threads.nthreads(:default)
+    n_interact = Threads.nthreads(:interactive)
     prepare_time = @elapsed begin
-        hvs::Vector{TMInput} = Vector{TMInput}(undef, CORPUS_LENGTH - CONTEXT_SIZE - 1)
-        vlocal_acc::Vector{Vector{BUNDLE_ACC_TYPE}} = [zeros(BUNDLE_ACC_TYPE, HV_DIMENSIONS) for _ in 1:nthreads(:default)]
-        vlocal_scratch::Vector{BitVector} = [BitVector(undef, HV_DIMENSIONS) for _ in 1:nthreads(:default)]
-        vlocal_scratch2::Vector{BitVector} = [BitVector(undef, HV_DIMENSIONS) for _ in 1:nthreads(:default)]
-        @threads for start in 1:CORPUS_LENGTH - CONTEXT_SIZE - 1
-            tid = Threads.threadid() - Threads.nthreads(:interactive)
-            finish = start + CONTEXT_SIZE - 1
-            context = @view(CORPUS[start:finish])
-            hv = gen_context_hvector!(vlocal_acc[tid], vlocal_scratch[tid], vlocal_scratch2[tid], context, hvectors)
+        hvs = Vector{TMInput}(undef, n)
+        vlocal_acc = [zeros(BUNDLE_ACC_TYPE, HV_DIMENSIONS) for _ in 1:n_default]
+        vlocal_scratch = [BitVector(undef, HV_DIMENSIONS) for _ in 1:n_default]
+        vlocal_scratch2 = [BitVector(undef, HV_DIMENSIONS) for _ in 1:n_default]
+        @threads for start in 1:n
+            tid = Threads.threadid() - n_interact
+            hv = gen_context_hvector!(vlocal_acc[tid], vlocal_scratch[tid], vlocal_scratch2[tid], @view(CORPUS[start:start + CONTEXT_SIZE - 1]), hvectors)
             hvs[start] = TMInput(hv.chunks, hv.len)
         end
     end
-    prepare_time = Time(0) + Second(floor(Int, prepare_time))
-    println("Done. Elapsed in $(prepare_time).")
+    println("Done. Elapsed in $(Time(0) + Second(floor(Int, prepare_time))).")
 end
 
 # Training the TM model
