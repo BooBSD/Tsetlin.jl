@@ -316,12 +316,12 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
             end
         else
             @inbounds for _ in 1:tm.s
-                i = rand(1:clause_size)
+                i = (rand(UInt32) % UInt32(clause_size)) + one(UInt32)
                 c[i] -= StateType(c[i] > state_min)
                 d = (i + 63) >> 6
                 r = (i - 1) & 63
                 l1[d] = l1[d] & ~(one(UInt64) << r) | UInt64(c[i] >= include_limit) << r
-                i = rand(1:clause_size)
+                i = (rand(UInt32) % UInt32(clause_size)) + one(UInt32)
                 ci[i] -= StateType(ci[i] > state_min)
                 d = (i + 63) >> 6
                 r = (i - 1) & 63
