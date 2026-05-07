@@ -37,6 +37,18 @@ mutable struct TMInput <: AbstractTMInput
         return new(chunks, len)
     end
 
+    function TMInput(len::Int)
+        num_chunks = cld(len, 64)
+        chunks = Memory{UInt64}(undef, num_chunks)
+        fill!(chunks, zero(UInt64))
+        return new(chunks, len)
+    end
+
+    function TMInput(::UndefInitializer, len::Int)
+        chunks = Memory{UInt64}(undef, cld(len, 64))
+        return new(chunks, len)
+    end
+
     function TMInput(chunks::AbstractArray{UInt64}, len::Int64)
         return new(chunks, len)
     end
@@ -56,10 +68,9 @@ end
     chunk_idx = ((i - 1) >>> 6) + 1
     bit_idx = (i - 1) & 63
     mask = UInt64(1) << bit_idx
-    @inbounds if v
-        x.chunks[chunk_idx] |= mask
-    else
-        x.chunks[chunk_idx] &= ~mask
+    @inbounds begin
+        c = x.chunks[chunk_idx]
+        x.chunks[chunk_idx] = ifelse(v, c | mask, c & ~mask)
     end
     return x
 end
