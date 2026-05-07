@@ -234,7 +234,11 @@ end
 function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput, clauses1::Matrix{StateType}, clauses_inverted1::Matrix{StateType}, clauses2::Matrix{StateType}, clauses_inverted2::Matrix{StateType}, literals1::Matrix{UInt64}, literals_inverted1::Matrix{UInt64}, literals2::Matrix{UInt64}, literals_inverted2::Matrix{UInt64}, literals1_idx::Matrix{UInt64}, literals2_idx::Matrix{UInt64}, positive::Bool, index::Bool) where {N, StateType}
     v::Int64 = clamp(-(vote(tm, ta, x, index=index)...), -tm.T, tm.T)
     update::Float64 = ifelse(positive, tm.T - v, tm.T + v) / (tm.T * 2)
-    last_bit = 63 - ((N << 6) - ta.clause_size)
+    include_limit = ta.include_limit
+    state_max = ta.state_max
+    state_min = ta.state_min
+    clause_size = ta.clause_size
+    last_bit = 63 - ((N << 6) - clause_size)
 
     # Feedback 1
     @inbounds for (c, ci, l1, li1, l1_idx) in zip(eachcol(clauses1), eachcol(clauses_inverted1), eachcol(literals1), eachcol(literals_inverted1), eachcol(literals1_idx))
@@ -252,15 +256,16 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
                 @inbounds for i in 1:N
                     pos = x.chunks[i]
                     neg = ~x.chunks[i]
+                    (pos | neg) == zero(UInt64) && continue
                     l_mask = li_mask = zero(UInt64)
                     base = i * 64 - 63
                     stop_bit = ifelse(i == N, last_bit , 63)
                     @simd for ii in 0:stop_bit
                         iii = base + ii
-                        c[iii]  += StateType((c[iii]  < ta.state_max) & (pos >> ii))
-                        ci[iii] += StateType((ci[iii] < ta.state_max) & (neg >> ii))
-                        l_mask  |= UInt64(c[iii]  >= ta.include_limit) << ii
-                        li_mask |= UInt64(ci[iii] >= ta.include_limit) << ii
+                        c[iii]  += StateType((c[iii]  < state_max) & (pos >> ii))
+                        ci[iii] += StateType((ci[iii] < state_max) & (neg >> ii))
+                        l_mask  |= UInt64(c[iii]  >= include_limit) << ii
+                        li_mask |= UInt64(ci[iii] >= include_limit) << ii
                     end
                     l1[i]  = (l1[i]  & ~pos) | (l_mask  & pos)
                     li1[i] = (li1[i] & ~neg) | (li_mask & neg)
@@ -279,29 +284,30 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
             @inbounds for i in 1:N
                 pos = ~x.chunks[i] & ~l1[i]
                 neg = x.chunks[i] & ~li1[i]
+                (pos | neg) == zero(UInt64) && continue
                 l_mask = li_mask = zero(UInt64)
                 base = i * 64 - 63
                 stop_bit = ifelse(i == N, last_bit , 63)
                 @simd for ii in 0:stop_bit
                     iii = base + ii
-                    c[iii]  -= StateType((c[iii]  > ta.state_min) & (pos >> ii))
-                    ci[iii] -= StateType((ci[iii] > ta.state_min) & (neg >> ii))
-                    l_mask  |= UInt64(c[iii]  >= ta.include_limit) << ii
-                    li_mask |= UInt64(ci[iii] >= ta.include_limit) << ii
+                    c[iii]  -= StateType((c[iii]  > state_min) & (pos >> ii))
+                    ci[iii] -= StateType((ci[iii] > state_min) & (neg >> ii))
+                    l_mask  |= UInt64(c[iii]  >= include_limit) << ii
+                    li_mask |= UInt64(ci[iii] >= include_limit) << ii
                 end
                 l1[i]  = (l1[i]  & ~pos) | (l_mask  & pos)
                 li1[i] = (li1[i] & ~neg) | (li_mask & neg)
             end
         else
             @inbounds for _ in 1:tm.s
-                i = rand(1:ta.clause_size)  # Here's one random only.
-                c[i] -= (c[i] > ta.state_min)
+                i = rand(1:clause_size)  # Here's one random only.
+                c[i] -= (c[i] > state_min)
                 d, r = divrem(i + 63, 64)
-                l1[d] = l1[d] & ~(1 << r) | (c[i] >= ta.include_limit) << r
-                i = rand(1:ta.clause_size)  # And here's another.
-                ci[i] -= (ci[i] > ta.state_min)
+                l1[d] = l1[d] & ~(1 << r) | (c[i] >= include_limit) << r
+                i = rand(1:clause_size)  # And here's another.
+                ci[i] -= (ci[i] > state_min)
                 d, r = divrem(i + 63, 64)
-                li1[d] = li1[d] & ~(1 << r) | (ci[i] >= ta.include_limit) << r
+                li1[d] = li1[d] & ~(1 << r) | (ci[i] >= include_limit) << r
             end
         end
         index && update_index(tm, l1, li1, l1_idx)
@@ -321,15 +327,16 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
         @inbounds for i in 1:N
             pos = ~x.chunks[i] & ~l2[i]
             neg = x.chunks[i] & ~li2[i]
+            (pos | neg) == zero(UInt64) && continue
             l_mask = li_mask = zero(UInt64)
             base = i * 64 - 63
             stop_bit = ifelse(i == N, last_bit , 63)
-            @simd for ii in 0:stop_bit
+            @inbounds @simd for ii in 0:stop_bit
                 iii = base + ii
                 c[iii]  += StateType((pos >> ii) & one(UInt64))
                 ci[iii] += StateType((neg >> ii) & one(UInt64))
-                l_mask  |= UInt64(c[iii]  >= ta.include_limit) << ii
-                li_mask |= UInt64(ci[iii] >= ta.include_limit) << ii
+                l_mask  |= UInt64(c[iii]  >= include_limit) << ii
+                li_mask |= UInt64(ci[iii] >= include_limit) << ii
             end
             l2[i]  = (l2[i]  & ~pos) | (l_mask  & pos)
             li2[i] = (li2[i] & ~neg) | (li_mask & neg)
