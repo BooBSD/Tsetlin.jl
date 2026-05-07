@@ -260,15 +260,23 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
                     l_mask = li_mask = zero(UInt64)
                     base = i * 64 - 63
                     stop_bit = ifelse(i == N, last_bit , 63)
-                    @simd for ii in 0:stop_bit
-                        iii = base + ii
-                        c[iii]  += StateType((c[iii]  < state_max) & (pos >> ii))
-                        ci[iii] += StateType((ci[iii] < state_max) & (neg >> ii))
-                        l_mask  |= UInt64(c[iii]  >= include_limit) << ii
-                        li_mask |= UInt64(ci[iii] >= include_limit) << ii
+                    # Two loops are a bit faster than one.
+                    if pos != zero(UInt64)
+                        @simd for ii in 0:stop_bit
+                            iii = base + ii
+                            c[iii] += StateType((c[iii] < state_max) & (pos >> ii))
+                            l_mask |= UInt64(c[iii] >= include_limit) << ii
+                        end
+                        l1[i] = (l1[i] & ~pos) | (l_mask & pos)
                     end
-                    l1[i]  = (l1[i]  & ~pos) | (l_mask  & pos)
-                    li1[i] = (li1[i] & ~neg) | (li_mask & neg)
+                    if neg != zero(UInt64)
+                        @simd for ii in 0:stop_bit
+                            iii = base + ii
+                            ci[iii] += StateType((ci[iii] < state_max) & (neg >> ii))
+                            li_mask |= UInt64(ci[iii] >= include_limit) << ii
+                        end
+                        li1[i] = (li1[i] & ~neg) | (li_mask & neg)
+                    end
                 end
             end
             # @inbounds for i = 1:ta.clause_size
@@ -288,26 +296,36 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
                 l_mask = li_mask = zero(UInt64)
                 base = i * 64 - 63
                 stop_bit = ifelse(i == N, last_bit , 63)
-                @simd for ii in 0:stop_bit
-                    iii = base + ii
-                    c[iii]  -= StateType((c[iii]  > state_min) & (pos >> ii))
-                    ci[iii] -= StateType((ci[iii] > state_min) & (neg >> ii))
-                    l_mask  |= UInt64(c[iii]  >= include_limit) << ii
-                    li_mask |= UInt64(ci[iii] >= include_limit) << ii
+                # Two loops are a bit faster than one.
+                if pos != zero(UInt64)
+                    @simd for ii in 0:stop_bit
+                        iii = base + ii
+                        c[iii] -= StateType((c[iii] > state_min) & (pos >> ii))
+                        l_mask |= UInt64(c[iii] >= include_limit) << ii
+                    end
+                    l1[i] = (l1[i] & ~pos) | (l_mask & pos)
                 end
-                l1[i]  = (l1[i]  & ~pos) | (l_mask  & pos)
-                li1[i] = (li1[i] & ~neg) | (li_mask & neg)
+                if neg != zero(UInt64)
+                    @simd for ii in 0:stop_bit
+                        iii = base + ii
+                        ci[iii] -= StateType((ci[iii] > state_min) & (neg >> ii))
+                        li_mask |= UInt64(ci[iii] >= include_limit) << ii
+                    end
+                    li1[i] = (li1[i] & ~neg) | (li_mask & neg)
+                end
             end
         else
             @inbounds for _ in 1:tm.s
-                i = rand(1:clause_size)  # Here's one random only.
-                c[i] -= (c[i] > state_min)
-                d, r = divrem(i + 63, 64)
-                l1[d] = l1[d] & ~(1 << r) | (c[i] >= include_limit) << r
-                i = rand(1:clause_size)  # And here's another.
-                ci[i] -= (ci[i] > state_min)
-                d, r = divrem(i + 63, 64)
-                li1[d] = li1[d] & ~(1 << r) | (ci[i] >= include_limit) << r
+                i = rand(1:clause_size)
+                c[i] -= StateType(c[i] > state_min)
+                d = (i + 63) >> 6
+                r = (i - 1) & 63
+                l1[d] = l1[d] & ~(one(UInt64) << r) | UInt64(c[i] >= include_limit) << r
+                i = rand(1:clause_size)
+                ci[i] -= StateType(ci[i] > state_min)
+                d = (i + 63) >> 6
+                r = (i - 1) & 63
+                li1[d] = li1[d] & ~(one(UInt64) << r) | UInt64(ci[i] >= include_limit) << r
             end
         end
         index && update_index(tm, l1, li1, l1_idx)
@@ -331,15 +349,23 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
             l_mask = li_mask = zero(UInt64)
             base = i * 64 - 63
             stop_bit = ifelse(i == N, last_bit , 63)
-            @inbounds @simd for ii in 0:stop_bit
-                iii = base + ii
-                c[iii]  += StateType((pos >> ii) & one(UInt64))
-                ci[iii] += StateType((neg >> ii) & one(UInt64))
-                l_mask  |= UInt64(c[iii]  >= include_limit) << ii
-                li_mask |= UInt64(ci[iii] >= include_limit) << ii
+            # Two loops are a bit faster than one.
+            if pos != zero(UInt64)
+                @inbounds @simd for ii in 0:stop_bit
+                    iii = base + ii
+                    c[iii] += StateType((pos >> ii) & one(UInt64))
+                    l_mask |= UInt64(c[iii] >= include_limit) << ii
+                end
+                l2[i] = (l2[i] & ~pos) | (l_mask & pos)
             end
-            l2[i]  = (l2[i]  & ~pos) | (l_mask  & pos)
-            li2[i] = (li2[i] & ~neg) | (li_mask & neg)
+            if neg != zero(UInt64)
+                @inbounds @simd for ii in 0:stop_bit
+                    iii = base + ii
+                    ci[iii] += StateType((neg >> ii) & one(UInt64))
+                    li_mask |= UInt64(ci[iii] >= include_limit) << ii
+                end
+                li2[i] = (li2[i] & ~neg) | (li_mask & neg)
+            end
         end
         index && update_index(tm, l2, li2, l2_idx)
     end
