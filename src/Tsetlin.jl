@@ -51,15 +51,19 @@ Base.sum(x::TMInput)::Int = sum(count_ones, x.chunks)
     bit_idx = (i - 1) & 63
     @inbounds return ((x.chunks[chunk_idx] >> bit_idx) & 1) == 1
 end
-@inline function Base.setindex!(x::TMInput, v, i::Int)
+@inline function Base.setindex!(x::TMInput, v::Bool, i::Int)
     @boundscheck checkbounds(x, i)
-    val = convert(Bool, v)
     chunk_idx = ((i - 1) >>> 6) + 1
     bit_idx = (i - 1) & 63
     mask = UInt64(1) << bit_idx
-    @inbounds x.chunks[chunk_idx] = (x.chunks[chunk_idx] & ~mask) | (UInt64(val) << bit_idx)
+    @inbounds if v
+        x.chunks[chunk_idx] |= mask
+    else
+        x.chunks[chunk_idx] &= ~mask
+    end
     return x
 end
+@inline Base.setindex!(x::TMInput, v, i::Int) = setindex!(x, convert(Bool, v), i)
 
 
 booleanize(x, ts...) = TMInput(vec(vec(x) .> reshape([ts...], 1, :)))
