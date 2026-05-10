@@ -211,20 +211,6 @@ function vote(tm::TMClassifier{<:Any, <:Any, <:Any, <:Any, C}, ta::TATeam, x::TM
 end
 
 
-# @inline function update_index(tm::TMClassifier{<:Any, N}, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64}, literals_idx::SubArray{UInt64}) where N
-#     idx_mask = zero(UInt64)
-#     @inbounds for i in 1:N
-#         a, b = literals[i], literals_inverted[i]
-#         if (a | b) != 0
-#             idx_mask |= (one(UInt64) << ((i - 1) & 63))
-#         end
-#         if (i & 63) == 0 || i == N
-#             literals_idx[(i - 1) >> 6 + 1] = idx_mask
-#             idx_mask = zero(UInt64)
-#         end
-#     end
-# end
-
 @inline function update_index(tm::TMClassifier{<:Any, N}, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64}, literals_idx::SubArray{UInt64}) where N
     @inbounds for n in 0:((N - 1) >> 6)
         base = n << 6
