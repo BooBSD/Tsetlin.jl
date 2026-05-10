@@ -15,6 +15,7 @@ x_test, y_test = unzip([MNIST(:test)...])
 # 4-bit booleanization
 x_train = [booleanize(x, 0, 0.25, 0.5, 0.75) for x in x_train]
 x_test = [booleanize(x, 0, 0.25, 0.5, 0.75) for x in x_test]
+# 1-bit booleanization
 # x_train = [booleanize(x, 0.25) for x in x_train]
 # x_test = [booleanize(x, 0.25) for x in x_test]
 
@@ -56,7 +57,7 @@ LF = 75
 EPOCHS = 1000
 
 # Training the TM model
-tm = TMClassifier(x_train[1], y_train, CLAUSES, T, S, L=L, LF=LF, states_num=256, include_limit=240)
+tm = TMClassifier(x_train[1], y_train, CLAUSES, T, S, L=L, LF=LF, states_num=256, include_limit=128)
 train!(tm, x_train, y_train, x_test, y_test, EPOCHS, index=false)
 
 save(tm, "/tmp/tm.tm")
