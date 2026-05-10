@@ -171,11 +171,8 @@ end
         # min_n = trailing_zeros(idx)
         # @simd for n in min_n:max_n  # Potentially faster on very sparse inputs
         @simd for n in 0:max_n  # Faster on a MNIST
-            chunk_idx = base + n
-            x_chunk = x.chunks[chunk_idx]
-            lit = literals[chunk_idx]
-            lit_inv = literals_inverted[chunk_idx]
-            val = (~x_chunk & lit) | (x_chunk & lit_inv)
+            id = base + n
+            val = (~x.chunks[id] & literals[id]) | (x.chunks[id] & literals_inverted[id])
             c -= count_ones(val)
         end
     end
