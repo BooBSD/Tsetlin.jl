@@ -162,21 +162,19 @@ end
 
 @inline function check_clause(tm::TMClassifier{<:Any, <:Any, I}, x::TMInput, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64}, literals_idx::SubArray{UInt64})::Int64 where I
     c = tm.LF
-    p_idx = pointer(literals_idx, 1)
-    p_chunks = pointer(x.chunks, 1)
-    p_lits = pointer(literals, 1)
-    p_lits_inv = pointer(literals_inverted, 1)
     @inbounds for i in 1:I
         (c <= 0) && return 0  # helps for huge inputs
-        idx = unsafe_load(p_idx, i)
+        idx = literals_idx[i]
         idx == zero(UInt64) && continue
         base = i * 64 - 63
-        for n in 0:63  # Faster on a big sparse inputs
-            (idx & (one(UInt64) << n)) == zero(UInt64) && continue
+        max_n = 63 - leading_zeros(idx)
+        # min_n = trailing_zeros(idx)
+        # @simd for n in min_n:max_n  # Potentially faster on very sparse inputs
+        @simd for n in 0:max_n  # Faster on a MNIST
             chunk_idx = base + n
-            x_chunk = unsafe_load(p_chunks, chunk_idx)
-            lit = unsafe_load(p_lits, chunk_idx)
-            lit_inv = unsafe_load(p_lits_inv, chunk_idx)
+            x_chunk = x.chunks[chunk_idx]
+            lit = literals[chunk_idx]
+            lit_inv = literals_inverted[chunk_idx]
             val = (~x_chunk & lit) | (x_chunk & lit_inv)
             c -= count_ones(val)
         end
@@ -213,17 +211,32 @@ function vote(tm::TMClassifier{<:Any, <:Any, <:Any, <:Any, C}, ta::TATeam, x::TM
 end
 
 
+# @inline function update_index(tm::TMClassifier{<:Any, N}, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64}, literals_idx::SubArray{UInt64}) where N
+#     idx_mask = zero(UInt64)
+#     @inbounds for i in 1:N
+#         a, b = literals[i], literals_inverted[i]
+#         if (a | b) != 0
+#             idx_mask |= (one(UInt64) << ((i - 1) & 63))
+#         end
+#         if (i & 63) == 0 || i == N
+#             literals_idx[(i - 1) >> 6 + 1] = idx_mask
+#             idx_mask = zero(UInt64)
+#         end
+#     end
+# end
+
 @inline function update_index(tm::TMClassifier{<:Any, N}, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64}, literals_idx::SubArray{UInt64}) where N
-    idx_mask = zero(UInt64)
-    @inbounds for i in 1:N
-        a, b = literals[i], literals_inverted[i]
-        if (a | b) != 0
-            idx_mask |= (one(UInt64) << ((i - 1) & 63))
+    @inbounds for n in 0:((N - 1) >> 6)
+        base = n << 6
+        idx_mask = zero(UInt64)
+        limit = min(63, N - 1 - base)
+        @simd for n in 0:limit
+            i = base + n + 1
+            combined = literals[i] | literals_inverted[i]
+            is_active = (combined != 0)
+            idx_mask |= (UInt64(is_active) << n)
         end
-        if (i & 63) == 0 || i == N
-            literals_idx[(i - 1) >> 6 + 1] = idx_mask
-            idx_mask = zero(UInt64)
-        end
+        literals_idx[n + 1] = idx_mask
     end
 end
 
