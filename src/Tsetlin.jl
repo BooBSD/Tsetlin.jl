@@ -169,17 +169,8 @@ end
     @inbounds for i in 1:I
         (c <= 0) && return 0  # helps for huge inputs
         idx = unsafe_load(p_idx, i)
+        idx == zero(UInt64) && continue
         base::Int64 = i * 64 - 63
-        # @inbounds while idx != 0
-        #     n::Int64 = trailing_zeros(idx)
-        #     chunk_idx::Int64 = base + n
-        #     x_chunk = unsafe_load(p_chunks, chunk_idx)
-        #     lit = unsafe_load(p_lits, chunk_idx)
-        #     lit_inv = unsafe_load(p_lits_inv, chunk_idx)
-        #     val = (~x_chunk & lit) | (x_chunk & lit_inv)
-        #     c -= count_ones(val)
-        #     idx &= idx - 1
-        # end
         @inbounds for n in 0:63  # Faster on a big sparse inputs
             (idx & (1 << n)) == zero(UInt64) && continue
             chunk_idx::Int64 = base + n
