@@ -161,7 +161,7 @@ end
 
 
 @inline function check_clause(tm::TMClassifier{<:Any, <:Any, I}, x::TMInput, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64}, literals_idx::SubArray{UInt64})::Int64 where I
-    c::Int64 = tm.LF
+    c = tm.LF
     p_idx = pointer(literals_idx, 1)
     p_chunks = pointer(x.chunks, 1)
     p_lits = pointer(literals, 1)
@@ -170,10 +170,10 @@ end
         (c <= 0) && return 0  # helps for huge inputs
         idx = unsafe_load(p_idx, i)
         idx == zero(UInt64) && continue
-        base::Int64 = i * 64 - 63
-        @inbounds for n in 0:63  # Faster on a big sparse inputs
-            (idx & (1 << n)) == zero(UInt64) && continue
-            chunk_idx::Int64 = base + n
+        base = i * 64 - 63
+        for n in 0:63  # Faster on a big sparse inputs
+            (idx & (one(UInt64) << n)) == zero(UInt64) && continue
+            chunk_idx = base + n
             x_chunk = unsafe_load(p_chunks, chunk_idx)
             lit = unsafe_load(p_lits, chunk_idx)
             lit_inv = unsafe_load(p_lits_inv, chunk_idx)
@@ -186,7 +186,7 @@ end
 
 
 @inline function check_clause(tm::TMClassifier{<:Any, N}, x::TMInput, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64})::Int64 where N
-    c::Int64 = tm.LF
+    c = tm.LF
     @inbounds @simd for i in 1:N
         val = (~x.chunks[i] & literals[i]) | (x.chunks[i] & literals_inverted[i])
         c -= count_ones(val)
@@ -196,8 +196,8 @@ end
 
 
 function vote(tm::TMClassifier{<:Any, <:Any, <:Any, <:Any, C}, ta::TATeam, x::TMInput; index::Bool=false)::Tuple{Int64, Int64} where C
-    pos::Int64 = 0
-    neg::Int64 = 0
+    pos = 0
+    neg = 0
     if !index
         @inbounds for i in 1:C
             pos += check_clause(tm, x, @view(ta.positive_included_literals[:, i]), @view(ta.positive_included_literals_inverted[:, i]))
