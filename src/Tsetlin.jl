@@ -381,10 +381,10 @@ end
 
 
 function predict(tm::TMClassifier{ClassType}, x::TMInput; index::Bool=false)::ClassType where ClassType
-    best_vote::Int64 = typemin(Int64)
-    best_cls::ClassType = typemin(ClassType)
+    best_vote = typemin(Int64)
+    best_cls = typemin(ClassType)
     @inbounds for (cls, ta) in tm.clauses
-        v::Int64 = -(vote(tm, ta, x, index=index)...)
+        v = -(vote(tm, ta, x, index=index)...)
         if v > best_vote
             best_vote = v
             best_cls = cls
@@ -393,11 +393,12 @@ function predict(tm::TMClassifier{ClassType}, x::TMInput; index::Bool=false)::Cl
     return best_cls
 end
 
+
 # function predict(tm::TMClassifier{ClassType}, x::TMInput; index::Bool=false)::ClassType where ClassType
-#     best_vote::Int64 = typemin(Int64)
-#     best_cls::ClassType = typemin(ClassType)
+#     best_vote = typemin(Int64)
+#     best_cls = typemin(ClassType)
 #     @inbounds for (cls, ta) in tm.clauses
-#         v::Int64 = -(vote(tm, ta, x, index=index)...)
+#         v = -(vote(tm, ta, x, index=index)...)
 #         best_cls = ifelse(v > best_vote, cls, best_cls)
 #         best_vote = ifelse(v > best_vote, v, best_vote)
 #     end
