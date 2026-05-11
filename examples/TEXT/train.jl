@@ -117,7 +117,7 @@ all_time = @elapsed begin
                         if counter >= SAMPLES_PER_EPOCH
                             break
                         end
-                        train!(tm, x, y)
+                        train!(tm, x, y, index=SPARSE_INDEX)
                         counter += 1
                     end
                 end
