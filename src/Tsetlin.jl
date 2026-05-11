@@ -190,7 +190,7 @@ end
 end
 
 
-function vote(tm::TMClassifier{<:Any, <:Any, <:Any, <:Any, C}, ta::TATeam, x::TMInput; index::Bool=false)::Tuple{Int64, Int64} where C
+@inline function vote(tm::TMClassifier{<:Any, <:Any, <:Any, <:Any, C}, ta::TATeam, x::TMInput; index::Bool=false)::Tuple{Int64, Int64} where C
     pos = 0
     neg = 0
     if !index
