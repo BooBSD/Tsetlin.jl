@@ -138,6 +138,10 @@ Benchmarking the compiled model:
 benchmark(tm, x_test, y_test, 1000 * 4, warmup=true, index=false)
 ```
 
+## MNIST Performance Benchmark
+
+<img width="564" height="314" alt="35 million MNIST predictions per second on a CPU using the latest FPTM library Tsetlin.jl" src="https://github.com/user-attachments/assets/d2902122-f8eb-4061-83a9-4759a96e5519" />
+
 ## More Examples
 
 This repository includes examples for *MNIST*, *Fashion-MNIST*, *CIFAR-10*, *AmazonSales*, *IMDb* sentiment analysis, *Noisy Parity Problem*, and *Shakespeare* character-level **text generation**.
