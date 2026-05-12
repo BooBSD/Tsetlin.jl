@@ -261,7 +261,7 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
                     (pos | neg) == zero(UInt64) && continue
                     l_mask = li_mask = zero(UInt64)
                     base = i * 64 - 63
-                    stop_bit = ifelse(i == N, last_bit , 63)
+                    stop_bit = ifelse(i == N, last_bit, 63)
                     # Two loops are a bit faster than one.
                     if pos != zero(UInt64)
                         @simd for ii in 0:stop_bit
@@ -297,7 +297,7 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
                 (pos | neg) == zero(UInt64) && continue
                 l_mask = li_mask = zero(UInt64)
                 base = i * 64 - 63
-                stop_bit = ifelse(i == N, last_bit , 63)
+                stop_bit = ifelse(i == N, last_bit, 63)
                 # Two loops are a bit faster than one.
                 if pos != zero(UInt64)
                     @simd for ii in 0:stop_bit
@@ -350,7 +350,7 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
             (pos | neg) == zero(UInt64) && continue
             l_mask = li_mask = zero(UInt64)
             base = i * 64 - 63
-            stop_bit = ifelse(i == N, last_bit , 63)
+            stop_bit = ifelse(i == N, last_bit, 63)
             # Two loops are a bit faster than one.
             if pos != zero(UInt64)
                 @simd for ii in 0:stop_bit
