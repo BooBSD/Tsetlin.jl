@@ -269,7 +269,7 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
                             c[iii] += StateType((c[iii] < state_max) & (pos >> ii))
                             l_mask |= UInt64(c[iii] >= include_limit) << ii
                         end
-                        l[i] = (l[i] & ~pos) | (l_mask & pos)
+                        l[i] = l_mask
                     end
                     if neg != zero(UInt64)
                         @simd for ii in 0:stop_bit
@@ -277,7 +277,7 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
                             ci[iii] += StateType((ci[iii] < state_max) & (neg >> ii))
                             li_mask |= UInt64(ci[iii] >= include_limit) << ii
                         end
-                        li[i] = (li[i] & ~neg) | (li_mask & neg)
+                        li[i] = li_mask
                     end
                 end
             end
@@ -305,7 +305,7 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
                         c[iii] -= StateType((c[iii] > state_min) & (pos >> ii))
                         l_mask |= UInt64(c[iii] >= include_limit) << ii
                     end
-                    l[i] = (l[i] & ~pos) | (l_mask & pos)
+                    l[i] = l_mask
                 end
                 if neg != zero(UInt64)
                     @simd for ii in 0:stop_bit
@@ -313,7 +313,7 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
                         ci[iii] -= StateType((ci[iii] > state_min) & (neg >> ii))
                         li_mask |= UInt64(ci[iii] >= include_limit) << ii
                     end
-                    li[i] = (li[i] & ~neg) | (li_mask & neg)
+                    li[i] = li_mask
                 end
             end
         else
@@ -358,7 +358,7 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
                     c[iii] += StateType((pos >> ii) & one(UInt64))
                     l_mask |= UInt64(c[iii] >= include_limit) << ii
                 end
-                l[i] = (l[i] & ~pos) | (l_mask & pos)
+                l[i] = l_mask
             end
             if neg != zero(UInt64)
                 @simd for ii in 0:stop_bit
@@ -366,7 +366,7 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
                     ci[iii] += StateType((neg >> ii) & one(UInt64))
                     li_mask |= UInt64(ci[iii] >= include_limit) << ii
                 end
-                li[i] = (li[i] & ~neg) | (li_mask & neg)
+                li[i] = li_mask
             end
         end
         index && update_index(tm, l, li, l_idx)
