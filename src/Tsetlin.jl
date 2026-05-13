@@ -266,11 +266,11 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
                 @inbounds for n in 1:N
                     pos = chunks[n]
                     neg = ~chunks[n]
-                    l_mask = li_mask = zero(UInt64)
                     base = n * 64 - 63
                     stop_bit = ifelse(n == N, last_bit, 63)
                     # Two loops are a bit faster than one.
                     if pos != zero(UInt64)
+                        l_mask = zero(UInt64)
                         @simd for i in 0:stop_bit
                             ii = base + i
                             c[ii] += StateType((c[ii] < state_max) & (pos >> i))
@@ -279,6 +279,7 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
                         l[n] = l_mask
                     end
                     if neg != zero(UInt64)
+                        li_mask = zero(UInt64)
                         @simd for i in 0:stop_bit
                             ii = base + i
                             ci[ii] += StateType((ci[ii] < state_max) & (neg >> i))
@@ -301,11 +302,11 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
             @inbounds for n in 1:N
                 pos = ~chunks[n] & ~l[n]
                 neg = chunks[n] & ~li[n]
-                l_mask = li_mask = zero(UInt64)
                 base = n * 64 - 63
                 stop_bit = ifelse(n == N, last_bit, 63)
                 # Two loops are a bit faster than one.
                 if pos != zero(UInt64)
+                    l_mask = zero(UInt64)
                     @simd for i in 0:stop_bit
                         ii = base + i
                         c[ii] -= StateType((c[ii] > state_min) & (pos >> i))
@@ -314,6 +315,7 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
                     l[n] = l_mask
                 end
                 if neg != zero(UInt64)
+                    li_mask = zero(UInt64)
                     @simd for i in 0:stop_bit
                         ii = base + i
                         ci[ii] -= StateType((ci[ii] > state_min) & (neg >> i))
@@ -353,11 +355,11 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
         @inbounds for n in 1:N
             pos = ~chunks[n] & ~l[n]
             neg = chunks[n] & ~li[n]
-            l_mask = li_mask = zero(UInt64)
             base = n * 64 - 63
             stop_bit = ifelse(n == N, last_bit, 63)
             # Two loops are a bit faster than one.
             if pos != zero(UInt64)
+                l_mask = zero(UInt64)
                 @simd for i in 0:stop_bit
                     ii = base + i
                     c[ii] += StateType((pos >> i) & one(UInt64))
@@ -366,6 +368,7 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
                 l[n] = l_mask
             end
             if neg != zero(UInt64)
+                li_mask = zero(UInt64)
                 @simd for i in 0:stop_bit
                     ii = base + i
                     ci[ii] += StateType((neg >> i) & one(UInt64))
