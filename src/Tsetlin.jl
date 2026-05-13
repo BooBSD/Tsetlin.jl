@@ -162,6 +162,7 @@ end
 
 @inline function check_clause(tm::TMClassifier{<:Any, <:Any, I}, x::TMInput, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64}, literals_idx::SubArray{UInt64})::Int64 where I
     c = tm.LF
+    chunks = x.chunks
     @inbounds for i in 1:I
         (c <= 0) && return 0  # helps for huge inputs
         idx = literals_idx[i]
@@ -172,7 +173,8 @@ end
         # @simd for n in min_n:max_n  # Potentially faster on very sparse inputs
         @simd for n in 0:max_n  # Faster on a MNIST
             id = base + n
-            val = (~x.chunks[id] & literals[id]) | (x.chunks[id] & literals_inverted[id])
+            chunk = chunks[id]
+            val = (~chunk & literals[id]) | (chunk & literals_inverted[id])
             c -= count_ones(val)
         end
     end
