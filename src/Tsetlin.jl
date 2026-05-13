@@ -25,14 +25,14 @@ mutable struct TMInput <: AbstractTMInput
         len = length(x)
         chunks = Memory{UInt64}(undef, cld(len, 64))
         idx = firstindex(x)
-        @inbounds for i in eachindex(chunks)
+        @inbounds for n in eachindex(chunks)
             chunk = zero(UInt64)
-            for ii in 0:63
+            for i in 0:63
                 idx > len && break
-                chunk |= UInt64(x[idx]) << ii
+                chunk |= UInt64(x[idx]) << i
                 idx += 1
             end
-            chunks[i] = chunk
+            chunks[n] = chunk
         end
         return new(chunks, len)
     end
@@ -184,8 +184,8 @@ end
 
 @inline function check_clause(tm::TMClassifier{<:Any, N}, x::TMInput, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64})::Int64 where N
     c = tm.LF
-    @inbounds @simd for i in 1:N
-        val = (~x.chunks[i] & literals[i]) | (x.chunks[i] & literals_inverted[i])
+    @inbounds @simd for n in 1:N
+        val = (~x.chunks[n] & literals[n]) | (x.chunks[n] & literals_inverted[n])
         c -= count_ones(val)
     end
     return max(0, c)
@@ -228,8 +228,8 @@ end
 
 @inline function include_literals_sum(a::AbstractVector{UInt64}, b::AbstractVector{UInt64}, N::Int64)::Int64
     c::Int64 = 0
-    @inbounds @simd for i in 1:N
-        c += count_ones(a[i] | b[i])
+    @inbounds @simd for n in 1:N
+        c += count_ones(a[n] | b[n])
     end
     return c
 end
@@ -257,29 +257,29 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
                 #         ci[i] += one(StateType)
                 #     end
                 # end
-                @inbounds for i in 1:N
-                    pos = x.chunks[i]
-                    neg = ~x.chunks[i]
+                @inbounds for n in 1:N
+                    pos = x.chunks[n]
+                    neg = ~x.chunks[n]
                     (pos | neg) == zero(UInt64) && continue
                     l_mask = li_mask = zero(UInt64)
-                    base = i * 64 - 63
-                    stop_bit = ifelse(i == N, last_bit, 63)
+                    base = n * 64 - 63
+                    stop_bit = ifelse(n == N, last_bit, 63)
                     # Two loops are a bit faster than one.
                     if pos != zero(UInt64)
-                        @simd for ii in 0:stop_bit
-                            iii = base + ii
-                            c[iii] += StateType((c[iii] < state_max) & (pos >> ii))
-                            l_mask |= UInt64(c[iii] >= include_limit) << ii
+                        @simd for i in 0:stop_bit
+                            ii = base + i
+                            c[ii] += StateType((c[ii] < state_max) & (pos >> i))
+                            l_mask |= UInt64(c[ii] >= include_limit) << i
                         end
-                        l[i] = l_mask
+                        l[n] = l_mask
                     end
                     if neg != zero(UInt64)
-                        @simd for ii in 0:stop_bit
-                            iii = base + ii
-                            ci[iii] += StateType((ci[iii] < state_max) & (neg >> ii))
-                            li_mask |= UInt64(ci[iii] >= include_limit) << ii
+                        @simd for i in 0:stop_bit
+                            ii = base + i
+                            ci[ii] += StateType((ci[ii] < state_max) & (neg >> i))
+                            li_mask |= UInt64(ci[ii] >= include_limit) << i
                         end
-                        li[i] = li_mask
+                        li[n] = li_mask
                     end
                 end
             end
@@ -293,29 +293,29 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
             #         ci[i] -= one(StateType)
             #     end
             # end
-            @inbounds for i in 1:N
-                pos = ~x.chunks[i] & ~l[i]
-                neg = x.chunks[i] & ~li[i]
+            @inbounds for n in 1:N
+                pos = ~x.chunks[n] & ~l[n]
+                neg = x.chunks[n] & ~li[n]
                 (pos | neg) == zero(UInt64) && continue
                 l_mask = li_mask = zero(UInt64)
-                base = i * 64 - 63
-                stop_bit = ifelse(i == N, last_bit, 63)
+                base = n * 64 - 63
+                stop_bit = ifelse(n == N, last_bit, 63)
                 # Two loops are a bit faster than one.
                 if pos != zero(UInt64)
-                    @simd for ii in 0:stop_bit
-                        iii = base + ii
-                        c[iii] -= StateType((c[iii] > state_min) & (pos >> ii))
-                        l_mask |= UInt64(c[iii] >= include_limit) << ii
+                    @simd for i in 0:stop_bit
+                        ii = base + i
+                        c[ii] -= StateType((c[ii] > state_min) & (pos >> i))
+                        l_mask |= UInt64(c[ii] >= include_limit) << i
                     end
-                    l[i] = l_mask
+                    l[n] = l_mask
                 end
                 if neg != zero(UInt64)
-                    @simd for ii in 0:stop_bit
-                        iii = base + ii
-                        ci[iii] -= StateType((ci[iii] > state_min) & (neg >> ii))
-                        li_mask |= UInt64(ci[iii] >= include_limit) << ii
+                    @simd for i in 0:stop_bit
+                        ii = base + i
+                        ci[ii] -= StateType((ci[ii] > state_min) & (neg >> i))
+                        li_mask |= UInt64(ci[ii] >= include_limit) << i
                     end
-                    li[i] = li_mask
+                    li[n] = li_mask
                 end
             end
         else
@@ -346,29 +346,29 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
         #         ci[i] += one(StateType)
         #     end
         # end
-        @inbounds for i in 1:N
-            pos = ~x.chunks[i] & ~l[i]
-            neg = x.chunks[i] & ~li[i]
+        @inbounds for n in 1:N
+            pos = ~x.chunks[n] & ~l[n]
+            neg = x.chunks[n] & ~li[n]
             (pos | neg) == zero(UInt64) && continue
             l_mask = li_mask = zero(UInt64)
-            base = i * 64 - 63
-            stop_bit = ifelse(i == N, last_bit, 63)
+            base = n * 64 - 63
+            stop_bit = ifelse(n == N, last_bit, 63)
             # Two loops are a bit faster than one.
             if pos != zero(UInt64)
-                @simd for ii in 0:stop_bit
-                    iii = base + ii
-                    c[iii] += StateType((pos >> ii) & one(UInt64))
-                    l_mask |= UInt64(c[iii] >= include_limit) << ii
+                @simd for i in 0:stop_bit
+                    ii = base + i
+                    c[ii] += StateType((pos >> i) & one(UInt64))
+                    l_mask |= UInt64(c[ii] >= include_limit) << i
                 end
-                l[i] = l_mask
+                l[n] = l_mask
             end
             if neg != zero(UInt64)
-                @simd for ii in 0:stop_bit
-                    iii = base + ii
-                    ci[iii] += StateType((neg >> ii) & one(UInt64))
-                    li_mask |= UInt64(ci[iii] >= include_limit) << ii
+                @simd for i in 0:stop_bit
+                    ii = base + i
+                    ci[ii] += StateType((neg >> i) & one(UInt64))
+                    li_mask |= UInt64(ci[ii] >= include_limit) << i
                 end
-                li[i] = li_mask
+                li[n] = li_mask
             end
         end
         index && update_index(tm, l, li, l_idx)
