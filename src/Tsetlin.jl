@@ -231,7 +231,7 @@ end
 end
 
 
-@inline function include_literals_sum(a::AbstractVector{UInt64}, b::AbstractVector{UInt64}, N::Int64)::Int64
+@inline function include_literals_sum(a::SubArray{UInt64}, b::SubArray{UInt64}, N::Int64)::Int64
     c::Int64 = 0
     @inbounds @simd for n in 1:N
         c += count_ones(a[n] | b[n])
