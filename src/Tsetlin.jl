@@ -266,7 +266,6 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
                 @inbounds for n in 1:N
                     pos = chunks[n]
                     neg = ~chunks[n]
-                    (pos | neg) == zero(UInt64) && continue
                     l_mask = li_mask = zero(UInt64)
                     base = n * 64 - 63
                     stop_bit = ifelse(n == N, last_bit, 63)
@@ -302,7 +301,6 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
             @inbounds for n in 1:N
                 pos = ~chunks[n] & ~l[n]
                 neg = chunks[n] & ~li[n]
-                (pos | neg) == zero(UInt64) && continue
                 l_mask = li_mask = zero(UInt64)
                 base = n * 64 - 63
                 stop_bit = ifelse(n == N, last_bit, 63)
@@ -355,7 +353,6 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
         @inbounds for n in 1:N
             pos = ~chunks[n] & ~l[n]
             neg = chunks[n] & ~li[n]
-            (pos | neg) == zero(UInt64) && continue
             l_mask = li_mask = zero(UInt64)
             base = n * 64 - 63
             stop_bit = ifelse(n == N, last_bit, 63)
