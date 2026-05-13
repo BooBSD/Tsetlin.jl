@@ -184,8 +184,13 @@ end
 
 @inline function check_clause(tm::TMClassifier{<:Any, N}, x::TMInput, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64})::Int64 where N
     c = tm.LF
+    chunks = x.chunks
     @inbounds @simd for n in 1:N
-        val = (~x.chunks[n] & literals[n]) | (x.chunks[n] & literals_inverted[n])
+        chunk = chunks[n]
+        lit = literals[n]
+        lit_inv = literals_inverted[n]
+        # val = (~chunk & lit) | (chunk & lit_inv)
+        val = (((lit ⊻ lit_inv) & chunk) ⊻ lit)
         c -= count_ones(val)
     end
     return max(0, c)
@@ -243,6 +248,7 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
     state_min = ta.state_min
     clause_size = ta.clause_size
     last_bit = 63 - ((N << 6) - clause_size)
+    chunks = x.chunks
 
     # Feedback 1
     @inbounds for (c, ci, l, li, l_idx) in zip(eachcol(clauses1), eachcol(clauses_inverted1), eachcol(literals1), eachcol(literals_inverted1), eachcol(literals1_idx))
@@ -258,8 +264,8 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
                 #     end
                 # end
                 @inbounds for n in 1:N
-                    pos = x.chunks[n]
-                    neg = ~x.chunks[n]
+                    pos = chunks[n]
+                    neg = ~chunks[n]
                     (pos | neg) == zero(UInt64) && continue
                     l_mask = li_mask = zero(UInt64)
                     base = n * 64 - 63
@@ -294,8 +300,8 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
             #     end
             # end
             @inbounds for n in 1:N
-                pos = ~x.chunks[n] & ~l[n]
-                neg = x.chunks[n] & ~li[n]
+                pos = ~chunks[n] & ~l[n]
+                neg = chunks[n] & ~li[n]
                 (pos | neg) == zero(UInt64) && continue
                 l_mask = li_mask = zero(UInt64)
                 base = n * 64 - 63
@@ -347,8 +353,8 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
         #     end
         # end
         @inbounds for n in 1:N
-            pos = ~x.chunks[n] & ~l[n]
-            neg = x.chunks[n] & ~li[n]
+            pos = ~chunks[n] & ~l[n]
+            neg = chunks[n] & ~li[n]
             (pos | neg) == zero(UInt64) && continue
             l_mask = li_mask = zero(UInt64)
             base = n * 64 - 63
