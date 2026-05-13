@@ -232,7 +232,7 @@ end
 
 
 @inline function include_literals_sum(a::SubArray{UInt64}, b::SubArray{UInt64}, N::Int64)::Int64
-    c::Int64 = 0
+    c = 0
     @inbounds @simd for n in 1:N
         c += count_ones(a[n] | b[n])
     end
@@ -241,8 +241,10 @@ end
 
 
 function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput, clauses1::Matrix{StateType}, clauses_inverted1::Matrix{StateType}, clauses2::Matrix{StateType}, clauses_inverted2::Matrix{StateType}, literals1::Matrix{UInt64}, literals_inverted1::Matrix{UInt64}, literals2::Matrix{UInt64}, literals_inverted2::Matrix{UInt64}, literals1_idx::Matrix{UInt64}, literals2_idx::Matrix{UInt64}, positive::Bool, index::Bool) where {N, StateType}
-    v::Int64 = clamp(-(vote(tm, ta, x, index=index)...), -tm.T, tm.T)
-    update::Float64 = ifelse(positive, tm.T - v, tm.T + v) / (tm.T * 2)
+    T = tm.T
+    pos, neg = vote(tm, ta, x, index=index)
+    v = clamp(pos - neg, -T, T)
+    update = ifelse(positive, T - v, T + v) / (T * 2)
     include_limit = ta.include_limit
     state_max = ta.state_max
     state_min = ta.state_min
@@ -391,27 +393,15 @@ end
 function predict(tm::TMClassifier{ClassType}, x::TMInput; index::Bool=false)::ClassType where ClassType
     best_vote = typemin(Int64)
     best_cls = typemin(ClassType)
-    @inbounds for (cls, ta) in tm.clauses
-        v = -(vote(tm, ta, x, index=index)...)
-        if v > best_vote
-            best_vote = v
-            best_cls = cls
-        end
+    for (cls, ta) in tm.clauses
+        pos, neg = vote(tm, ta, x, index=index)
+        v = pos - neg
+        is_better = v > best_vote
+        best_cls = ifelse(is_better, cls, best_cls)
+        best_vote = ifelse(is_better, v, best_vote)
     end
     return best_cls
 end
-
-
-# function predict(tm::TMClassifier{ClassType}, x::TMInput; index::Bool=false)::ClassType where ClassType
-#     best_vote = typemin(Int64)
-#     best_cls = typemin(ClassType)
-#     @inbounds for (cls, ta) in tm.clauses
-#         v = -(vote(tm, ta, x, index=index)...)
-#         best_cls = ifelse(v > best_vote, cls, best_cls)
-#         best_vote = ifelse(v > best_vote, v, best_vote)
-#     end
-#     return best_cls
-# end
 
 
 function predict(tm::TMClassifier{ClassType}, X::Vector{TMInput}; index::Bool=false)::Vector{ClassType} where ClassType
