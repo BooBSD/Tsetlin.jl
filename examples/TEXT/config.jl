@@ -29,17 +29,17 @@ const S = 16000
 const L = 8192
 const LF = 8192
 
-# CLAUSES = 256  # Not bad, but slow.
-# T = 1024 * 1
-# S = 16000
-# L = 8192
-# LF = 8192
+# const CLAUSES = 256  # Not bad, but slow.
+# const T = 1024 * 1
+# const S = 16000
+# const L = 8192
+# const LF = 8192
 
-# CLAUSES = 4  # Small 1 MB model.
-# T = 128 * 1
-# S = 16000
-# L = 8192
-# LF = 8192
+# const CLAUSES = 4  # Small 1 MB model.
+# const T = 128 * 1
+# const S = 16000
+# const L = 8192
+# const LF = 8192
 
 # isfile(CORPUS_PATH) || download(CORPUS_URL, CORPUS_PATH)
 # const PROMPT = read(CORPUS_PATH)[1:CONTEXT_SIZE]
