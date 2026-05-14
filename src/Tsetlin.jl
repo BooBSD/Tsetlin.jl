@@ -266,25 +266,25 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
                 #     end
                 # end
                 @inbounds for n in 1:N
-                    pos = chunks[n]
-                    neg = ~chunks[n]
+                    std_mask = chunks[n]
+                    inv_mask = ~chunks[n]
                     base = n * 64 - 63
                     stop_bit = ifelse(n == N, last_bit, 63)
                     # Two loops are a bit faster than one.
-                    if pos != zero(UInt64)
+                    if std_mask != zero(UInt64)
                         l_mask = zero(UInt64)
                         @simd for i in 0:stop_bit
                             ii = base + i
-                            c[ii] += StateType((c[ii] < state_max) & (pos >> i))
+                            c[ii] += StateType((c[ii] < state_max) & (std_mask >> i))
                             l_mask |= UInt64(c[ii] >= include_limit) << i
                         end
                         l[n] = l_mask
                     end
-                    if neg != zero(UInt64)
+                    if inv_mask != zero(UInt64)
                         li_mask = zero(UInt64)
                         @simd for i in 0:stop_bit
                             ii = base + i
-                            ci[ii] += StateType((ci[ii] < state_max) & (neg >> i))
+                            ci[ii] += StateType((ci[ii] < state_max) & (inv_mask >> i))
                             li_mask |= UInt64(ci[ii] >= include_limit) << i
                         end
                         li[n] = li_mask
@@ -302,25 +302,25 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
             #     end
             # end
             @inbounds for n in 1:N
-                pos = ~chunks[n] & ~l[n]
-                neg = chunks[n] & ~li[n]
+                std_mask = ~chunks[n] & ~l[n]
+                inv_mask = chunks[n] & ~li[n]
                 base = n * 64 - 63
                 stop_bit = ifelse(n == N, last_bit, 63)
                 # Two loops are a bit faster than one.
-                if pos != zero(UInt64)
+                if std_mask != zero(UInt64)
                     l_mask = zero(UInt64)
                     @simd for i in 0:stop_bit
                         ii = base + i
-                        c[ii] -= StateType((c[ii] > state_min) & (pos >> i))
+                        c[ii] -= StateType((c[ii] > state_min) & (std_mask >> i))
                         l_mask |= UInt64(c[ii] >= include_limit) << i
                     end
                     l[n] = l_mask
                 end
-                if neg != zero(UInt64)
+                if inv_mask != zero(UInt64)
                     li_mask = zero(UInt64)
                     @simd for i in 0:stop_bit
                         ii = base + i
-                        ci[ii] -= StateType((ci[ii] > state_min) & (neg >> i))
+                        ci[ii] -= StateType((ci[ii] > state_min) & (inv_mask >> i))
                         li_mask |= UInt64(ci[ii] >= include_limit) << i
                     end
                     li[n] = li_mask
@@ -355,25 +355,25 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
         #     end
         # end
         @inbounds for n in 1:N
-            pos = ~chunks[n] & ~l[n]
-            neg = chunks[n] & ~li[n]
+            std_mask = ~chunks[n] & ~l[n]
+            inv_mask = chunks[n] & ~li[n]
             base = n * 64 - 63
             stop_bit = ifelse(n == N, last_bit, 63)
             # Two loops are a bit faster than one.
-            if pos != zero(UInt64)
+            if std_mask != zero(UInt64)
                 l_mask = zero(UInt64)
                 @simd for i in 0:stop_bit
                     ii = base + i
-                    c[ii] += StateType((pos >> i) & one(UInt64))
+                    c[ii] += StateType((std_mask >> i) & one(UInt64))
                     l_mask |= UInt64(c[ii] >= include_limit) << i
                 end
                 l[n] = l_mask
             end
-            if neg != zero(UInt64)
+            if inv_mask != zero(UInt64)
                 li_mask = zero(UInt64)
                 @simd for i in 0:stop_bit
                     ii = base + i
-                    ci[ii] += StateType((neg >> i) & one(UInt64))
+                    ci[ii] += StateType((inv_mask >> i) & one(UInt64))
                     li_mask |= UInt64(ci[ii] >= include_limit) << i
                 end
                 li[n] = li_mask
