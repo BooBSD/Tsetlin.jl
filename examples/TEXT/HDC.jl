@@ -17,7 +17,7 @@ bind!(target::BitVector, source::BitVector) = (target .⊻= source)
 # Sparse
 @inline function bundle_add!(acc::BitVector, hv::BitVector)::BitVector
     acc .|= hv
-    return hv
+    return acc
 end
 
 # Zipf
