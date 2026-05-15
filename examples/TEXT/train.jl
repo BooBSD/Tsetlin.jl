@@ -85,7 +85,7 @@ local_scratch2 = BitVector(undef, HV_DIMENSIONS)
 hv_sample = gen_context_hvector!(local_acc, local_scratch, local_scratch2, @view(CORPUS[1:CONTEXT_SIZE]), hvectors)
 x_sample = TMInput(hv_sample.chunks, hv_sample.len)
 y_samples = collect(keys(hvectors))
-tm = TMClassifier(x_sample, y_samples, CLAUSES, T, S, L=L, LF=LF, states_num=STATES_NUM, include_limit=INCLUDE_LIMIT)
+tm = TMClassifier(x_sample, y_samples, CLAUSES, T, S, L, LF, states_num=STATES_NUM, include_limit=INCLUDE_LIMIT)
 save(compile(tm), TM_PATH)  # Save empty model for sample()
 
 density = round(sum(x_sample) / length(x_sample) * 100, digits=2)

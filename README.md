@@ -120,7 +120,7 @@ EPOCHS  = 1000 # Number of training epochs
 Train the model over 1000 epochs and save the compiled model to disk:
 
 ```julia
-tm = TMClassifier(x_train[1], y_train, CLAUSES, T, S, L=L, LF=LF, states_num=256, include_limit=240)
+tm = TMClassifier(x_train[1], y_train, CLAUSES, T, S, L, LF, states_num=256, include_limit=240)
 train!(tm, x_train, y_train, x_test, y_test, EPOCHS, shuffle=true, index=false)
 save(compile(tm), "/tmp/tm_last.tm")
 ```

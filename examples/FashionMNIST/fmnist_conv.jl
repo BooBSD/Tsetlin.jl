@@ -264,5 +264,5 @@ LF = 200
 EPOCHS = 1000
 
 # Training the TM model
-tm = TMClassifier(X_train[1], y_train, CLAUSES, T, S, L=L, LF=LF, states_num=256, include_limit=230)
+tm = TMClassifier(X_train[1], y_train, CLAUSES, T, S, L, LF, states_num=256, include_limit=230)
 tms = train!(tm, X_train, y_train, X_test, y_test, EPOCHS, index=false)

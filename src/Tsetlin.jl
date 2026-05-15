@@ -131,7 +131,7 @@ mutable struct TMClassifier{ClassType, N, I, TMType, C}
     const state_max::Int64
     const clauses::TMType
 
-    function TMClassifier(x::TMInput, Y::Vector, clauses_num::Int64, T::Int64, S::Int64; states_num::Int64=256, include_limit::Int64=128, L::Int64=16, LF::Int64=4)
+    function TMClassifier(x::TMInput, Y::Vector, clauses_num::Int64, T::Int64, S::Int64, L::Int64, LF::Int64; states_num::Int64=256, include_limit::Int64=128)
         state_max_available = maximum(typemax.(STATE_TYPES))
         state_max = states_num - 1
         @assert 2 <= states_num <= state_max_available + 1 "states_num must be between 2 to $(state_max_available + 1)."
