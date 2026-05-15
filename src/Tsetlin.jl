@@ -170,7 +170,7 @@ end
     @inbounds for i in 1:I
         (c <= 0) && return 0  # helps for huge inputs
         idx = literals_idx[i]
-        idx == zero(UInt64) && continue
+        (idx == zero(UInt64)) && continue
         base = i * 64 - 63
         max_n = 63 - leading_zeros(idx)
         # min_n = trailing_zeros(idx)
@@ -332,12 +332,18 @@ function feedback!(tm::TMClassifier{<:Any, N}, ta::TATeam{StateType}, x::TMInput
             end
         else
             @inbounds for _ in 1:tm.s
-                i = (rand(UInt32) % UInt32(clause_size)) + one(UInt32)
+                # Extracting two random UInt32 values from a single UInt64
+                rnd = rand(UInt64)
+                rnd1 = rnd % UInt32
+                rnd2 = UInt32(rnd >> 32)
+
+                i = (rnd1 % UInt32(clause_size)) + one(UInt32)
                 c[i] -= StateType(c[i] > state_min)
                 d = (i + 63) >> 6
                 r = (i - 1) & 63
                 l[d] = l[d] & ~(one(UInt64) << r) | UInt64(c[i] >= include_limit) << r
-                i = (rand(UInt32) % UInt32(clause_size)) + one(UInt32)
+
+                i = (rnd2 % UInt32(clause_size)) + one(UInt32)
                 ci[i] -= StateType(ci[i] > state_min)
                 d = (i + 63) >> 6
                 r = (i - 1) & 63
