@@ -2,11 +2,10 @@ include("../../src/Tsetlin.jl")
 
 using .Tsetlin: TMInput, TMClassifier, train!
 
-
-X_train = readlines("/tmp/Amazon_X_train.txt")
-Y_train = readlines("/tmp/Amazon_Y_train.txt")
-X_test = readlines("/tmp/Amazon_X_test.txt")
-Y_test = readlines("/tmp/Amazon_Y_test.txt")
+X_train = joinpath(tempdir(), "Amazon_X_train.txt")
+Y_train = joinpath(tempdir(), "Amazon_Y_train.txt")
+X_test = joinpath(tempdir(), "Amazon_X_test.txt")
+Y_test = joinpath(tempdir(), "Amazon_Y_test.txt")
 
 x_train = [TMInput([parse(Bool, x) for x in split(X, " ")]) for X in X_train]
 x_test = [TMInput([parse(Bool, x) for x in split(X, " ")]) for X in X_test]
