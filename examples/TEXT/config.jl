@@ -2,9 +2,9 @@ export config
 
 
 const CORPUS_URL = "https://raw.githubusercontent.com/BooBSD/char-rnn/refs/heads/patch-1/data/tinyshakespeare/input.txt"
-const CORPUS_PATH = "/tmp/input.txt"
-const TM_PATH = "/tmp/tm_text.tm"
-const HV_PATH = "/tmp/hvectors"
+const CORPUS_PATH = joinpath(tempdir(), "input.txt")
+const TM_PATH = joinpath(tempdir(), "tm_text.tm")
+const HV_PATH = joinpath(tempdir(), "hvectors")
 const HV_DIMENSIONS = 1024 * 16
 const BUNDLE_ACC_TYPE = Float32
 const NGRAM = 2
