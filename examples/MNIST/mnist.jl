@@ -12,12 +12,12 @@ x_test, y_test = unzip([MNIST(:test)...])
 # x_train, y_train = unzip([FashionMNIST(:train)...])
 # x_test, y_test = unzip([FashionMNIST(:test)...])
 
-# 4-bit booleanization
-x_train = [booleanize(x, 0, 0.25, 0.5, 0.75) for x in x_train]
-x_test = [booleanize(x, 0, 0.25, 0.5, 0.75) for x in x_test]
 # 1-bit booleanization
-# x_train = [booleanize(x, 0.2) for x in x_train]
-# x_test = [booleanize(x, 0.2) for x in x_test]
+x_train = [booleanize(x, 0.2) for x in x_train]
+x_test = [booleanize(x, 0.2) for x in x_test]
+# 4-bit booleanization
+# x_train = [booleanize(x, 0, 0.25, 0.5, 0.75) for x in x_train]
+# x_test = [booleanize(x, 0, 0.25, 0.5, 0.75) for x in x_test]
 
 # Convert y_train and y_test to the Int8 type to save memory
 y_train = Int8.(y_train)
@@ -67,4 +67,4 @@ tm = load("/tmp/tm.tm")
 tmc = compile(tm)
 
 # Benchmark
-benchmark(tmc, x_test, y_test, 1000 * 2, warmup=true, index=false)
+benchmark(tmc, x_test, y_test, 1000 * 10, warmup=true, index=false)
