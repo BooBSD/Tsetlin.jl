@@ -56,12 +56,14 @@ LF = 75
 
 EPOCHS = 1000
 
+MODEL_PATH = joinpath(tempdir(), "tm.tm")
+
 # Training the TM model
 tm = TMClassifier(x_train[1], y_train, CLAUSES, T, S, L, LF, states_num=256, include_limit=128)
 train!(tm, x_train, y_train, x_test, y_test, EPOCHS, index=false)
 
-save(tm, "/tmp/tm.tm")
-tm = load("/tmp/tm.tm")
+save(tm, MODEL_PATH)
+tm = load(MODEL_PATH)
 
 # Compiling model
 tmc = compile(tm)
