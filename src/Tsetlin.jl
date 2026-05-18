@@ -102,11 +102,10 @@ mutable struct TATeam{StateType}
     function TATeam{StateType}(clause_size::Int64, ta_clauses_num::Int64, include_limit::Int64, state_min::Int64, state_max::Int64) where StateType
         chunks_size = ceil(Int, clause_size / 64)
         chunks_idx_size = ceil(Int, chunks_size / 64)
-        chunks_bits_size = ceil(Int, clause_size / 64) * 64
-        positive_clauses = fill(StateType(include_limit - 1), chunks_bits_size, ta_clauses_num)
-        negative_clauses = fill(StateType(include_limit - 1), chunks_bits_size, ta_clauses_num)
-        positive_clauses_inverted = fill(StateType(include_limit - 1), chunks_bits_size, ta_clauses_num)
-        negative_clauses_inverted = fill(StateType(include_limit - 1), chunks_bits_size, ta_clauses_num)
+        positive_clauses = fill(StateType(include_limit - 1), clause_size, ta_clauses_num)
+        negative_clauses = fill(StateType(include_limit - 1), clause_size, ta_clauses_num)
+        positive_clauses_inverted = fill(StateType(include_limit - 1), clause_size, ta_clauses_num)
+        negative_clauses_inverted = fill(StateType(include_limit - 1), clause_size, ta_clauses_num)
         positive_included_literals_idx = fill(zero(UInt64), chunks_idx_size, ta_clauses_num)
         negative_included_literals_idx = fill(zero(UInt64), chunks_idx_size, ta_clauses_num)
         positive_included_literals = fill(zero(UInt64), chunks_size, ta_clauses_num)
