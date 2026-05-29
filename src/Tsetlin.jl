@@ -270,14 +270,13 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, <:Any, C}, ta::TATeam{State
     @inbounds for j in 1:C
         rndup1, rndup2 = get_rands()
 
-        c = @view(clauses1[:, j])
-        ci = @view(clauses_inverted1[:, j])
-        l = @view(literals1[:, j])
-        li = @view(literals_inverted1[:, j])
-        l_idx = @view(literals1_idx[:, j])
-
         # if rand() < update
         if rndup1 < update
+            c = @view(clauses1[:, j])
+            ci = @view(clauses_inverted1[:, j])
+            l = @view(literals1[:, j])
+            li = @view(literals_inverted1[:, j])
+            l_idx = @view(literals1_idx[:, j])
             if (!index ? check_clause(tm, x, l, li) : check_clause(tm, x, l, li, l_idx)) > 0
                 if include_literals_sum(l, li, N) < tm.L
                     # @inbounds for i = 1:ta.clause_size
@@ -378,14 +377,13 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, <:Any, C}, ta::TATeam{State
     # end
     # Feedback 2
     # @inbounds for j in 1:C
-        c = @view(clauses2[:, j])
-        ci = @view(clauses_inverted2[:, j])
-        l = @view(literals2[:, j])
-        li = @view(literals_inverted2[:, j])
-        l_idx = @view(literals2_idx[:, j])
-
         # if rand() < update
         if rndup2 < update
+            c = @view(clauses2[:, j])
+            ci = @view(clauses_inverted2[:, j])
+            l = @view(literals2[:, j])
+            li = @view(literals_inverted2[:, j])
+            l_idx = @view(literals2_idx[:, j])
             (!index ? check_clause(tm, x, l, li) : check_clause(tm, x, l, li, l_idx)) > 0 || continue
             # @inbounds for i = 1:ta.clause_size
             #     if (x.x[i] == false) && (c[i] < ta.include_limit)
