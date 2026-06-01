@@ -164,10 +164,11 @@ end
 
 
 @inline function check_clause(tm::TMClassifier{<:Any, <:Any, I}, x::TMInput, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64}, literals_idx::SubArray{UInt64})::Int64 where I
-    c = tm.LF
+    LF = tm.LF
+    c = 0
     chunks = x.chunks
     @inbounds for i in 1:I
-        (c <= 0) && return 0  # helps for huge inputs
+        (c >= LF) && return 0  # helps for huge inputs
         idx = literals_idx[i]
         (idx == zero(UInt64)) && continue
         base = i * 64 - 63
@@ -177,16 +178,17 @@ end
         @simd for n in 0:max_n  # Faster on a MNIST
             id = base + n
             chunk = chunks[id]
-            val = (~chunk & literals[id]) | (chunk & literals_inverted[id])
-            c -= count_ones(val)
+            # val = (~chunk & literals[id]) | (chunk & literals_inverted[id])
+            val = (((literals[id] ⊻ literals_inverted[id]) & chunk) ⊻ literals[id])
+            c += count_ones(val)
         end
     end
-    return max(0, c)
+    return max(0, LF - c)
 end
 
 
 @inline function check_clause(tm::TMClassifier{<:Any, N}, x::TMInput, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64})::Int64 where N
-    c = tm.LF
+    c = 0
     chunks = x.chunks
     @inbounds @simd for n in 1:N
         chunk = chunks[n]
@@ -194,9 +196,9 @@ end
         lit_inv = literals_inverted[n]
         # val = (~chunk & lit) | (chunk & lit_inv)
         val = (((lit ⊻ lit_inv) & chunk) ⊻ lit)
-        c -= count_ones(val)
+        c += count_ones(val)
     end
-    return max(0, c)
+    return max(0, tm.LF - c)
 end
 
 
