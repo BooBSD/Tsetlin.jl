@@ -5,9 +5,9 @@ import Pkg
 [Base.find_package(p) === nothing && Pkg.add(p) for p in ["MLDatasets"]]
 [Base.find_package(p) === nothing && Pkg.add(p) for p in ["CairoMakie"]]
 
-using MLDatasets: MNIST, FashionMNIST
 using CairoMakie
-using .Tsetlin: TMInput, TMClassifier, train!, save, load, unzip, booleanize, compile, predict, accuracy
+using MLDatasets: MNIST, FashionMNIST
+using .Tsetlin: TMInput, TMClassifier, train!, save, load, unzip, booleanize, compile
 
 
 MODEL_PATH = joinpath(tempdir(), "tm.tm")
@@ -38,6 +38,18 @@ LF = 75
 # S = 200
 # L = 16
 # LF = 8
+
+# CLAUSES = 128
+# T = 4
+# S = 24
+# L = 12
+# LF = 1
+
+# CLAUSES = 512
+# T = 16
+# S = 30
+# L = 12
+# LF = 1
 
 EPOCHS = 1000
 
@@ -87,8 +99,6 @@ function plot_heatmaps(explained_model::Dict; colormap = :hot)
     return fig
 end
 
-
-accuracy(predict(tmc, x_test), y_test) |> println
 
 print("Explain model...")
 explained_model = explain(tmc)
