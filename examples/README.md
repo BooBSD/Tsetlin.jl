@@ -22,13 +22,13 @@ Below is an example of character-level text generation in the style of Shakespea
 In the **first terminal window**, run the following command to train the model over multiple epochs:
 
 ```shell
-julia -t auto examples/TEXT/train.jl
+julia -O3 -t auto examples/TEXT/train.jl
 ```
 
 In the **second terminal window**, run the following command after each training epoch to observe how the quality of the generated text evolves from one epoch to the next:
 
 ```shell
-julia examples/TEXT/sample.jl
+julia -O3 examples/TEXT/sample.jl
 ```
 
 After **400+** epochs, you should see output similar to the following:
@@ -69,7 +69,7 @@ If you want to train the text generator on your own corpus, replace `/tmp/input.
 Then rerun the command:
 
 ```shell
-julia -t auto examples/TEXT/train.jl
+julia -O3 -t auto examples/TEXT/train.jl
 ```
 
 ### IMDb Example (1 clause per class)
