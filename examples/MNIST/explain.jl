@@ -100,6 +100,11 @@ function plot_heatmaps(explained_model::Dict; colormap = :hot)
 end
 
 
+ex = explain(tmc, x_test)
+ex[42][UInt8(7)][true].clauses[5].matched_literals |> println
+ex[42][UInt8(7)][true].clauses[5].matched_literals_inverted |> println
+ex[42][UInt8(7)][true].clauses[5].vote |> println
+
 print("Explaining model...")
 explained_model = explain(tmc)
 println("\t\tdone.")
