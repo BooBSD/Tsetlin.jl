@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use Tsetlin.jl, please cite the software and/or the associated arXiv paper."
+title: "Tsetlin.jl"
+authors:
+  - family-names: Hnilov
+    given-names: Artem
+    orcid: https://orcid.org/0009-0000-6644-0787
+repository-code: https://github.com/BooBSD/Tsetlin.jl
+version: 0.1.0
+date-released: 2025-08-11
+preferred-citation:
+  type: article
+  authors:
+    - family-names: Hnilov
+      given-names: Artem
+      orcid: https://orcid.org/0009-0000-6644-0787
+  title: "Fuzzy-Pattern Tsetlin Machine"
+  archive: arXiv
+  year: 2025
+  doi: 10.48550/arXiv.2508.08350
