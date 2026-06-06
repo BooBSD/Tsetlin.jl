@@ -1,4 +1,3 @@
-# include("../../src/Tsetlin.jl")
 include("../Tsetlin.jl")
 
 export explain
