@@ -5,11 +5,11 @@ authors:
   - family-names: Hnilov
     given-names: Artem
     orcid: https://orcid.org/0009-0000-6644-0787
-url: https://github.com/BooBSD/Tsetlin.jl
+repository-code: https://github.com/BooBSD/Tsetlin.jl
 version: 0.1.0
 date-released: 2025-08-11
 preferred-citation:
-  type: article
+  type: preprint
   authors:
     - family-names: Hnilov
       given-names: Artem
