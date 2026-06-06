@@ -91,19 +91,19 @@ function plot_heatmaps(explained_model::Dict; colormap = :hot)
     positive_included_literals_inverted = [explained_model[Int8(digit)].positive_included_literals_inverted for digit in 0:9]
     negative_included_literals = [explained_model[Int8(digit)].negative_included_literals for digit in 0:9]
     negative_included_literals_inverted = [explained_model[Int8(digit)].negative_included_literals_inverted for digit in 0:9]
-    draw_block!(fig, 1,  positive_included_literals, "Positive included literals")
-    draw_block!(fig, 4,  positive_included_literals_inverted, "Positive included literals inverted")
-    draw_block!(fig, 7,  negative_included_literals, "Negative included literals")
+    draw_block!(fig, 1, positive_included_literals, "Positive included literals")
+    draw_block!(fig, 4, positive_included_literals_inverted, "Positive included literals inverted")
+    draw_block!(fig, 7, negative_included_literals, "Negative included literals")
     draw_block!(fig, 10, negative_included_literals_inverted, "Negative included literals inverted")
     Label(fig[0, :], "FPTM MNIST included literal distributed representations", fontsize=32, halign=:left)
     return fig
 end
 
 
-print("Explain model...")
+print("Explaining model...")
 explained_model = explain(tmc)
 println("\t\tdone.")
-print("Drawing literals heatmap...")
+print("Drawing literal heatmap...")
 fig = plot_heatmaps(explained_model)
 println("\tdone.")
 print("Saving image to $(IMAGE_PATH)...")
