@@ -148,7 +148,7 @@ benchmark(tm, x_test, y_test, 1000 * 4, warmup=true, index=false)
 
 To generate a heat map of the included distributed literal representation on the MNIST dataset, run the following command:
 
-```julia
+```shell
 julia -O3 -t auto examples/MNIST/explain.jl
 ```
 
