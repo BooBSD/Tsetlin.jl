@@ -9,7 +9,7 @@ repository-code: https://github.com/BooBSD/Tsetlin.jl
 version: 0.1.0
 date-released: 2025-08-11
 preferred-citation:
-  type: preprint
+  type: article
   authors:
     - family-names: Hnilov
       given-names: Artem
