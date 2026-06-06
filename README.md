@@ -21,7 +21,7 @@ It achieves over **35 million** MNIST predictions per second at 98% accuracy, wi
   - Automatic selection of `UInt8` or `UInt16` Tsetlin Automata based on the number of TA states.
   - Automatic switching between binary and multi-class classification depending on the dataset.
   - Built-in benchmarking tool.
-
+  - Built-in explainability tools.
 
 ## Quick Start
 
@@ -143,6 +143,16 @@ benchmark(tm, x_test, y_test, 1000 * 4, warmup=true, index=false)
 35 million MNIST predictions per second on a CPU.
 
 <img width="564" height="314" alt="35 million MNIST predictions per second on a CPU using the latest FPTM library Tsetlin.jl" src="https://github.com/user-attachments/assets/d2902122-f8eb-4061-83a9-4759a96e5519" />
+
+## Explainability Tools
+
+To generate a heat map of the included distributed literal representation on the MNIST dataset, run the following command:
+
+```julia
+julia -O3 -t auto examples/MNIST/explain.jl
+```
+
+<img width="2000" height="1020" alt="Fuzzy-Pattern Tsetlin Machine MNIST included literal distributed representation" src="https://github.com/user-attachments/assets/b89660d4-1d5e-4b8a-9925-f2aa14220922" />
 
 ## More Examples
 
