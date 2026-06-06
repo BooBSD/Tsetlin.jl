@@ -152,7 +152,7 @@ To generate a heat map of the included distributed literal representation on the
 julia -O3 -t auto examples/MNIST/explain.jl
 ```
 
-<img width="2000" height="1020" alt="Fuzzy-Pattern Tsetlin Machine MNIST included literal distributed representation" src="https://github.com/user-attachments/assets/b89660d4-1d5e-4b8a-9925-f2aa14220922" />
+<img width="2000" height="820" alt="Fuzzy-Pattern Tsetlin Machine MNIST included literal distributed representation heat map" src="https://github.com/user-attachments/assets/e5809cf9-3c57-4626-830c-ac8bcc1f4361" />
 
 ## More Examples
 
