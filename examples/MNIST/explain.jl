@@ -7,7 +7,7 @@ import Pkg
 
 using CairoMakie
 using MLDatasets: MNIST, FashionMNIST
-using .Tsetlin: TMInput, TMClassifier, train!, save, load, unzip, booleanize, compile
+using .Tsetlin: TMInput, TMClassifier, train!, save, load, unzip, booleanize, compile, check_clause
 
 
 MODEL_PATH = joinpath(tempdir(), "tm.tm")
@@ -102,9 +102,11 @@ end
 
 # Basic explanation tests
 print("Explaining input vector...")
-ex = explain(tmc, x_test[42])
+x = x_test[42]
+cls = UInt8(7)
+ex = explain(tmc, x)
 println("\tdone.")
-clause = ex[UInt8(7)][true].clauses[5]
+clause = ex[cls][true].clauses[5]
 println("\nMatched literals:")
 clause.matched_literals |> println
 println("\nMatched literals inverted:")
@@ -118,6 +120,11 @@ println("\nClause vote: $(clause.vote)\n")
 print("Checking clause voting logic...")
 failed_literals_sum = sum(clause.failed_literals) + sum(clause.failed_literals_inverted)
 @assert max(0, tmc.LF - failed_literals_sum) == clause.vote
+
+ta = tmc.clauses[findfirst(==(cls), tmc.classes)]
+lit = @view(ta.positive_included_literals[:, 5])
+lit_inv = @view(ta.positive_included_literals_inverted[:, 5])
+@assert clause.vote == check_clause(tmc, x, lit, lit_inv)
 println("\tdone.")
 
 # Drawing heat map
