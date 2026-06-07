@@ -100,11 +100,27 @@ function plot_heatmaps(explained_model::Dict; colormap = :hot)
 end
 
 
-ex = explain(tmc, x_test)
-ex[42][UInt8(7)][true].clauses[5].matched_literals |> println
-ex[42][UInt8(7)][true].clauses[5].matched_literals_inverted |> println
-ex[42][UInt8(7)][true].clauses[5].vote |> println
+# Basic explanation tests
+print("Explaining input vector...")
+ex = explain(tmc, x_test[42])
+println("\tdone.")
+clause = ex[UInt8(7)][true].clauses[5]
+println("\nMatched literals:")
+clause.matched_literals |> println
+println("\nMatched literals inverted:")
+clause.matched_literals_inverted |> println
+println("\nFailed literals:")
+clause.failed_literals |> println
+println("\nFailed literals inverted:")
+clause.failed_literals_inverted |> println
+println("\nClause vote: $(clause.vote)\n")
 
+print("Checking clause voting logic...")
+failed_literals_sum = sum(clause.failed_literals) + sum(clause.failed_literals_inverted)
+@assert max(0, tmc.LF - failed_literals_sum) == clause.vote
+println("\tdone.")
+
+# Drawing heat map
 print("Explaining model...")
 explained_model = explain(tmc)
 println("\t\tdone.")
