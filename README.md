@@ -146,7 +146,7 @@ benchmark(tm, x_test, y_test, 1000 * 4, warmup=true, index=false)
 
 ## Explainability Tools
 
-To generate a heat map of the included distributed literal representation on the MNIST dataset, run the following command:
+To explain a specific input vector or generate a heat map of the distributed literal representation on the MNIST dataset, run the following command:
 
 ```shell
 julia -O3 -t auto examples/MNIST/explain.jl
