@@ -255,7 +255,7 @@ end
 end
 
 
-function feedback!(tm::TMClassifier{<:Any, N, <:Any, <:Any, C}, ta::TATeam{StateType}, x::TMInput, clauses1::Matrix{StateType}, clauses_inverted1::Matrix{StateType}, clauses2::Matrix{StateType}, clauses_inverted2::Matrix{StateType}, literals1::Matrix{UInt64}, literals_inverted1::Matrix{UInt64}, literals2::Matrix{UInt64}, literals_inverted2::Matrix{UInt64}, literals1_idx::Matrix{UInt64}, literals2_idx::Matrix{UInt64}, positive::Bool, index::Bool) where {N, StateType, C}
+function feedback!(tm::TMClassifier{<:Any, N, <:Any, <:Any, C}, ta::TATeam{StateType}, x::TMInput, clauses1::Matrix{StateType}, clauses_inverted1::Matrix{StateType}, clauses2::Matrix{StateType}, clauses_inverted2::Matrix{StateType}, literals1::Matrix{UInt64}, literals_inverted1::Matrix{UInt64}, literals2::Matrix{UInt64}, literals_inverted2::Matrix{UInt64}, literals1_idx::Matrix{UInt64}, literals2_idx::Matrix{UInt64}, positive::Bool, index::Bool, exclusive_literals::Bool=false) where {N, StateType, C}
     T = tm.T
     pos, neg = vote(tm, ta, x, index=index)
     v = clamp(pos - neg, -T, T)
@@ -301,7 +301,7 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, <:Any, C}, ta::TATeam{State
                             c[ii] += StateType((c[ii] < state_max) & (std_mask >> i))
                             l_mask |= UInt64(c[ii] >= include_limit) << i
                         end
-                        l[n] = l_mask
+                        l[n] = ifelse(exclusive_literals, l_mask & ~li[n], l_mask)  # contradiction fix
                     end
                     @inbounds for n in 1:N
                         inv_mask = ~chunks[n]
@@ -314,7 +314,7 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, <:Any, C}, ta::TATeam{State
                             ci[ii] += StateType((ci[ii] < state_max) & (inv_mask >> i))
                             li_mask |= UInt64(ci[ii] >= include_limit) << i
                         end
-                        li[n] = li_mask
+                        li[n] = ifelse(exclusive_literals, li_mask & ~l[n], li_mask)  # contradiction fix
                     end
                 end
                 # @inbounds for i = 1:ta.clause_size
@@ -339,7 +339,7 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, <:Any, C}, ta::TATeam{State
                         c[ii] -= StateType((c[ii] > state_min) & (std_mask >> i))
                         l_mask |= UInt64(c[ii] >= include_limit) << i
                     end
-                    l[n] = l_mask
+                    l[n] = ifelse(exclusive_literals, l_mask & ~li[n], l_mask)  # contradiction fix
                 end
                 @inbounds for n in 1:N
                     inv_mask = chunks[n] & ~li[n]
@@ -352,7 +352,7 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, <:Any, C}, ta::TATeam{State
                         ci[ii] -= StateType((ci[ii] > state_min) & (inv_mask >> i))
                         li_mask |= UInt64(ci[ii] >= include_limit) << i
                     end
-                    li[n] = li_mask
+                    li[n] = ifelse(exclusive_literals, li_mask & ~l[n], li_mask)  # contradiction fix
                 end
             else
                 @inbounds for _ in 1:tm.s
@@ -365,13 +365,15 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, <:Any, C}, ta::TATeam{State
                     c[i] -= StateType(c[i] > state_min)
                     d = (i + 63) >> 6
                     r = (i - 1) & 63
-                    l[d] = l[d] & ~(one(UInt64) << r) | UInt64(c[i] >= include_limit) << r
+                    l_mask = l[d] & ~(one(UInt64) << r) | UInt64(c[i] >= include_limit) << r
+                    l[d] = ifelse(exclusive_literals, l_mask & ~li[d], l_mask)  # contradiction fix
 
                     i = (rnd2 % UInt32(clause_size)) + one(UInt32)
                     ci[i] -= StateType(ci[i] > state_min)
                     d = (i + 63) >> 6
                     r = (i - 1) & 63
-                    li[d] = li[d] & ~(one(UInt64) << r) | UInt64(ci[i] >= include_limit) << r
+                    li_mask = li[d] & ~(one(UInt64) << r) | UInt64(ci[i] >= include_limit) << r
+                    li[d] = ifelse(exclusive_literals, li_mask & ~l[d], li_mask)  # contradiction fix
                 end
             end
             index && update_index(tm, l, li, l_idx)
@@ -407,7 +409,7 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, <:Any, C}, ta::TATeam{State
                     c[ii] += StateType((std_mask >> i) & one(UInt64))
                     l_mask |= UInt64(c[ii] >= include_limit) << i
                 end
-                l[n] = l_mask
+                l[n] = ifelse(exclusive_literals, l_mask & ~li[n], l_mask)  # contradiction fix
             end
             @inbounds for n in 1:N
                 inv_mask = chunks[n] & ~li[n]
@@ -420,7 +422,7 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, <:Any, C}, ta::TATeam{State
                     ci[ii] += StateType((inv_mask >> i) & one(UInt64))
                     li_mask |= UInt64(ci[ii] >= include_limit) << i
                 end
-                li[n] = li_mask
+                li[n] = ifelse(exclusive_literals, li_mask & ~l[n], li_mask)  # contradiction fix
             end
             index && update_index(tm, l, li, l_idx)
         end
@@ -467,38 +469,38 @@ function accuracy(predicted::Vector{T}, Y::Vector{T})::Float64 where T
 end
 
 
-function train!(tm::TMClassifier{ClassType}, x::TMInput, y::ClassType; index::Bool=false) where ClassType <: Bool
+function train!(tm::TMClassifier{ClassType}, x::TMInput, y::ClassType; index::Bool=false, exclusive_literals::Bool=false) where ClassType <: Bool
     ta = tm.clauses
     if y == true
-        feedback!(tm, ta, x, ta.positive_clauses, ta.positive_clauses_inverted, ta.negative_clauses, ta.negative_clauses_inverted, ta.positive_included_literals, ta.positive_included_literals_inverted, ta.negative_included_literals, ta.negative_included_literals_inverted, ta.positive_included_literals_idx, ta.negative_included_literals_idx, true, index)
+        feedback!(tm, ta, x, ta.positive_clauses, ta.positive_clauses_inverted, ta.negative_clauses, ta.negative_clauses_inverted, ta.positive_included_literals, ta.positive_included_literals_inverted, ta.negative_included_literals, ta.negative_included_literals_inverted, ta.positive_included_literals_idx, ta.negative_included_literals_idx, true, index, exclusive_literals)
     else
-        feedback!(tm, ta, x, ta.negative_clauses, ta.negative_clauses_inverted, ta.positive_clauses, ta.positive_clauses_inverted, ta.negative_included_literals, ta.negative_included_literals_inverted, ta.positive_included_literals, ta.positive_included_literals_inverted, ta.negative_included_literals_idx, ta.positive_included_literals_idx, false, index)
+        feedback!(tm, ta, x, ta.negative_clauses, ta.negative_clauses_inverted, ta.positive_clauses, ta.positive_clauses_inverted, ta.negative_included_literals, ta.negative_included_literals_inverted, ta.positive_included_literals, ta.positive_included_literals_inverted, ta.negative_included_literals_idx, ta.positive_included_literals_idx, false, index, exclusive_literals)
     end
 end
 
 
-function train!(tm::TMClassifier{ClassType}, x::TMInput, y::ClassType; index::Bool=false) where ClassType
+function train!(tm::TMClassifier{ClassType}, x::TMInput, y::ClassType; index::Bool=false, exclusive_literals::Bool=false) where ClassType
     classes = tm.classes
     clauses = tm.clauses
     @inbounds for i in eachindex(classes)
         ta = clauses[i]
         if classes[i] == y
-            feedback!(tm, ta, x, ta.positive_clauses, ta.positive_clauses_inverted, ta.negative_clauses, ta.negative_clauses_inverted, ta.positive_included_literals, ta.positive_included_literals_inverted, ta.negative_included_literals, ta.negative_included_literals_inverted, ta.positive_included_literals_idx, ta.negative_included_literals_idx, true, index)
+            feedback!(tm, ta, x, ta.positive_clauses, ta.positive_clauses_inverted, ta.negative_clauses, ta.negative_clauses_inverted, ta.positive_included_literals, ta.positive_included_literals_inverted, ta.negative_included_literals, ta.negative_included_literals_inverted, ta.positive_included_literals_idx, ta.negative_included_literals_idx, true, index, exclusive_literals)
         else
-            feedback!(tm, ta, x, ta.negative_clauses, ta.negative_clauses_inverted, ta.positive_clauses, ta.positive_clauses_inverted, ta.negative_included_literals, ta.negative_included_literals_inverted, ta.positive_included_literals, ta.positive_included_literals_inverted, ta.negative_included_literals_idx, ta.positive_included_literals_idx, false, index)
+            feedback!(tm, ta, x, ta.negative_clauses, ta.negative_clauses_inverted, ta.positive_clauses, ta.positive_clauses_inverted, ta.negative_included_literals, ta.negative_included_literals_inverted, ta.positive_included_literals, ta.positive_included_literals_inverted, ta.negative_included_literals_idx, ta.positive_included_literals_idx, false, index, exclusive_literals)
         end
     end
 end
 
 
-function train!(tm::TMClassifier{ClassType}, X::Vector{TMInput}, Y::Vector{ClassType}; shuffle::Bool=true, index::Bool=false) where ClassType
+function train!(tm::TMClassifier{ClassType}, X::Vector{TMInput}, Y::Vector{ClassType}; shuffle::Bool=true, index::Bool=false, exclusive_literals::Bool=false) where ClassType
     @threads for i in ifelse(shuffle, randperm(length(Y)), eachindex(Y))
-        train!(tm, X[i], Y[i], index=index)
+        train!(tm, X[i], Y[i], index=index, exclusive_literals=exclusive_literals)
     end
 end
 
 
-function train!(tm::TMClassifier{ClassType}, x_train::Vector{TMInput}, y_train::Vector{ClassType}, x_test::Vector{TMInput}, y_test::Vector{ClassType}, epochs::Int64; shuffle::Bool=true, index::Bool=false, verbose::Int=1, best_tms_size::Int64=0, best_tms_compile::Bool=true)::Vector{Tuple{TMClassifier, Float64}} where ClassType
+function train!(tm::TMClassifier{ClassType}, x_train::Vector{TMInput}, y_train::Vector{ClassType}, x_test::Vector{TMInput}, y_test::Vector{ClassType}, epochs::Int64; shuffle::Bool=true, index::Bool=false, verbose::Int=1, best_tms_size::Int64=0, best_tms_compile::Bool=true, exclusive_literals::Bool=false)::Vector{Tuple{TMClassifier, Float64}} where ClassType
     @assert best_tms_size in 0:2000
     if verbose > 0
         density = round(sum(sum(x) for x in x_train) / (length(x_train[1]) * length(x_train)) * 100, digits=2)
@@ -511,7 +513,7 @@ function train!(tm::TMClassifier{ClassType}, x_train::Vector{TMInput}, y_train::
     best_tms = Tuple{TMClassifier, Float64}[]
     all_time = @elapsed begin
         @inbounds for i in 1:epochs
-            training_time = @elapsed train!(tm, x_train, y_train, shuffle=shuffle, index=index)
+            training_time = @elapsed train!(tm, x_train, y_train, shuffle=shuffle, index=index, exclusive_literals=exclusive_literals)
             testing_time = @elapsed predicted = predict(tm, x_test, index=index)
             acc = accuracy(predicted, y_test)
             best_acc = ifelse(acc > best_acc, acc, best_acc)
