@@ -29,7 +29,7 @@ struct ExplainedClauses
 end
 
 
-@inline function explain(literals::Matrix{UInt64}, clause_size::Int64)::Vector{Int16}
+@inline function explain(literals::Matrix{UInt64}, clause_size::UInt32)::Vector{Int16}
     res = zeros(Int16, clause_size)
     bv = BitVector(undef, clause_size)
     @inbounds for lits in eachcol(literals)
@@ -42,25 +42,25 @@ end
 end
 
 
-@inline function explain(ta::TATeam)::ExplainedLiteralSum
+@inline function explain(tm::TMClassifier, ta::TATeam)::ExplainedLiteralSum
     return ExplainedLiteralSum(
-        explain(ta.positive_included_literals, ta.clause_size),
-        explain(ta.positive_included_literals_inverted, ta.clause_size),
-        explain(ta.negative_included_literals, ta.clause_size),
-        explain(ta.negative_included_literals_inverted, ta.clause_size),
+        explain(ta.positive_included_literals, tm.clause_size),
+        explain(ta.positive_included_literals_inverted, tm.clause_size),
+        explain(ta.negative_included_literals, tm.clause_size),
+        explain(ta.negative_included_literals_inverted, tm.clause_size),
     )
 end
 
 
 function explain(tm::TMClassifier{ClassType})::ExplainedLiteralSum where ClassType <: Bool
-    return explain(tm.clauses)
+    return explain(tm, tm.clauses)
 end
 
 
 function explain(tm::TMClassifier{ClassType})::Dict{ClassType, ExplainedLiteralSum} where ClassType
     res::Dict{ClassType, ExplainedLiteralSum} = Dict()
     @inbounds for (cls, ta) in zip(tm.classes, tm.clauses)
-        res[cls] = explain(ta)
+        res[cls] = explain(tm, ta)
     end
     return res
 end
@@ -79,12 +79,13 @@ function explain(tm::TMClassifier{<:Any, N}, x::TMInput, literals::SubArray{UInt
         failed_literals_inverted.chunks[i] = x.chunks[i] & literals_inverted[i]
         c += count_ones(failed_literals.chunks[i] | failed_literals_inverted.chunks[i])
     end
+    vote = max(0, tm.LF - c)
     return ExplainedClause(
         matched_literals,
         matched_literals_inverted,
         failed_literals,
         failed_literals_inverted,
-        max(0, tm.LF - c),
+        vote,
     )
 end
 
