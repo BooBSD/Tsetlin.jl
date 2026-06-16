@@ -83,7 +83,7 @@ booleanize(x, ts...) = TMInput(vec(vec(x) .> reshape([ts...], 1, :)))
 const STATE_TYPES = (UInt8, UInt16)
 
 
-mutable struct TATeam{StateType}
+mutable struct TMClauses{StateType}
     const positive_included_literals::Matrix{UInt64}
     const positive_included_literals_inverted::Matrix{UInt64}
     const negative_included_literals::Matrix{UInt64}
@@ -98,7 +98,7 @@ mutable struct TATeam{StateType}
     const state_min::StateType
     const state_max::StateType
 
-    function TATeam{StateType}(clause_size::Int64, ta_clauses_num::Int64, include_limit::Int64, state_min::Int64, state_max::Int64) where StateType
+    function TMClauses{StateType}(clause_size::Int64, ta_clauses_num::Int64, include_limit::Int64, state_min::Int64, state_max::Int64) where StateType
         chunks_size = ceil(Int, clause_size / 64)
         chunks_idx_size = ceil(Int, chunks_size / 64)
         positive_clauses = fill(StateType(include_limit - 1), clause_size, ta_clauses_num)
@@ -143,20 +143,20 @@ mutable struct TMClassifier{ClassType, N, I, TMType, C}
         s = round(Int, length(x) / S)
         StateType = STATE_TYPES[findfirst(T -> state_max <= typemax(T), STATE_TYPES)]
         if ClassType == Bool
-            TMType = TATeam{StateType}
-            clauses = TATeam{StateType}(clause_size, clauses_num, include_limit, 0, state_max)
+            TMType = TMClauses{StateType}
+            clauses = TMClauses{StateType}(clause_size, clauses_num, include_limit, 0, state_max)
             classes_num = 2
             ta_clauses_num = clauses_num
             classes = Memory{Bool}([true, false])
         else
             ta_clauses_num = floor(Int, clauses_num / 2)
-            TMType = Memory{TATeam{StateType}}
+            TMType = Memory{TMClauses{StateType}}
             ys = sort(unique(Y))
             classes_num = length(ys)
             clauses::TMType = TMType(undef, classes_num)
             classes = Memory{ClassType}(ys)
             for i in eachindex(ys)
-                clauses[i] = TATeam{StateType}(clause_size, ta_clauses_num, include_limit, 0, state_max)
+                clauses[i] = TMClauses{StateType}(clause_size, ta_clauses_num, include_limit, 0, state_max)
             end
         end
         return new{ClassType, N, I, TMType, ta_clauses_num}(classes_num, clauses_num, T, S, s, L, LF, clause_size, include_limit, 0, state_max, clauses, classes)
@@ -203,18 +203,18 @@ end
 end
 
 
-@inline function vote(tm::TMClassifier{<:Any, <:Any, <:Any, <:Any, C}, ta::TATeam, x::TMInput; index::Bool=false)::Tuple{Int64, Int64} where C
+@inline function vote(tm::TMClassifier{<:Any, <:Any, <:Any, <:Any, C}, clauses::TMClauses, x::TMInput; index::Bool=false)::Tuple{Int64, Int64} where C
     pos = 0
     neg = 0
     if !index
         @inbounds for i in 1:C
-            pos += check_clause(tm, x, @view(ta.positive_included_literals[:, i]), @view(ta.positive_included_literals_inverted[:, i]))
-            neg += check_clause(tm, x, @view(ta.negative_included_literals[:, i]), @view(ta.negative_included_literals_inverted[:, i]))
+            pos += check_clause(tm, x, @view(clauses.positive_included_literals[:, i]), @view(clauses.positive_included_literals_inverted[:, i]))
+            neg += check_clause(tm, x, @view(clauses.negative_included_literals[:, i]), @view(clauses.negative_included_literals_inverted[:, i]))
         end
     else
         @inbounds for i in 1:C
-            pos += check_clause(tm, x, @view(ta.positive_included_literals[:, i]), @view(ta.positive_included_literals_inverted[:, i]), @view(ta.positive_included_literals_idx[:, i]))
-            neg += check_clause(tm, x, @view(ta.negative_included_literals[:, i]), @view(ta.negative_included_literals_inverted[:, i]), @view(ta.negative_included_literals_idx[:, i]))
+            pos += check_clause(tm, x, @view(clauses.positive_included_literals[:, i]), @view(clauses.positive_included_literals_inverted[:, i]), @view(clauses.positive_included_literals_idx[:, i]))
+            neg += check_clause(tm, x, @view(clauses.negative_included_literals[:, i]), @view(clauses.negative_included_literals_inverted[:, i]), @view(clauses.negative_included_literals_idx[:, i]))
         end
     end
     return pos, neg
@@ -256,15 +256,15 @@ end
 end
 
 
-function feedback!(tm::TMClassifier{<:Any, N, <:Any, <:Any, C}, ta::TATeam{StateType}, x::TMInput, clauses1::Matrix{StateType}, clauses_inverted1::Matrix{StateType}, clauses2::Matrix{StateType}, clauses_inverted2::Matrix{StateType}, literals1::Matrix{UInt64}, literals_inverted1::Matrix{UInt64}, literals2::Matrix{UInt64}, literals_inverted2::Matrix{UInt64}, literals1_idx::Matrix{UInt64}, literals2_idx::Matrix{UInt64}, positive::Bool, index::Bool, exclusive_literals::Bool=false) where {N, StateType, C}
+function feedback!(tm::TMClassifier{<:Any, N, <:Any, <:Any, C}, clauses::TMClauses{StateType}, x::TMInput, clauses1::Matrix{StateType}, clauses_inverted1::Matrix{StateType}, clauses2::Matrix{StateType}, clauses_inverted2::Matrix{StateType}, literals1::Matrix{UInt64}, literals_inverted1::Matrix{UInt64}, literals2::Matrix{UInt64}, literals_inverted2::Matrix{UInt64}, literals1_idx::Matrix{UInt64}, literals2_idx::Matrix{UInt64}, positive::Bool, index::Bool, exclusive_literals::Bool=false) where {N, StateType, C}
     T = tm.T
-    pos, neg = vote(tm, ta, x, index=index)
+    pos, neg = vote(tm, clauses, x, index=index)
     v = clamp(pos - neg, -T, T)
     # update = ifelse(positive, T - v, T + v) / (T * 2)
     update = 0.5f0 + ifelse(positive, -v, v) / Float32(T * 2)
-    include_limit = ta.include_limit
-    state_max = ta.state_max
-    state_min = ta.state_min
+    include_limit = clauses.include_limit
+    state_max = clauses.state_max
+    state_min = clauses.state_min
     clause_size = tm.clause_size
     last_bit = 63 - ((N << 6) - clause_size)
     chunks = x.chunks
@@ -283,10 +283,10 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, <:Any, C}, ta::TATeam{State
             if (!index ? check_clause(tm, x, l, li) : check_clause(tm, x, l, li, l_idx)) > 0
                 if include_literals_sum(l, li, N) < tm.L
                     # @inbounds for i = 1:tm.clause_size
-                    #     if (x.x[i] == true) && (c[i] < ta.state_max)
+                    #     if (x.x[i] == true) && (c[i] < state_max)
                     #         c[i] += one(StateType)
                     #     end
-                    #     if (x.x[i] == false) && (ci[i] < ta.state_max)
+                    #     if (x.x[i] == false) && (ci[i] < state_max)
                     #         ci[i] += one(StateType)
                     #     end
                     # end
@@ -320,11 +320,11 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, <:Any, C}, ta::TATeam{State
                 end
                 # @inbounds for i = 1:tm.clause_size
                 #     # No random
-                #     if (x.x[i] == false) && (c[i] < ta.include_limit) && (c[i] > ta.state_min)
+                #     if (x.x[i] == false) && (c[i] < include_limit) && (c[i] > state_min)
                 #         c[i] -= one(StateType)
                 #     end
                 #     # No random
-                #     if (x.x[i] == true) && (ci[i] < ta.include_limit) && (ci[i] > ta.state_min)
+                #     if (x.x[i] == true) && (ci[i] < include_limit) && (ci[i] > state_min)
                 #         ci[i] -= one(StateType)
                 #     end
                 # end
@@ -391,10 +391,10 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, <:Any, C}, ta::TATeam{State
             l_idx = @view(literals2_idx[:, j])
             (!index ? check_clause(tm, x, l, li) : check_clause(tm, x, l, li, l_idx)) > 0 || continue
             # @inbounds for i = 1:tm.clause_size
-            #     if (x.x[i] == false) && (c[i] < ta.include_limit)
+            #     if (x.x[i] == false) && (c[i] < include_limit)
             #         c[i] += one(StateType)
             #     end
-            #     if (x.x[i] == true) && (ci[i] < ta.include_limit)
+            #     if (x.x[i] == true) && (ci[i] < include_limit)
             #         ci[i] += one(StateType)
             #     end
             # end
@@ -471,24 +471,24 @@ end
 
 
 function train!(tm::TMClassifier{ClassType}, x::TMInput, y::ClassType; index::Bool=false, exclusive_literals::Bool=false) where ClassType <: Bool
-    ta = tm.clauses
+    clauses = tm.clauses
     if y == true
-        feedback!(tm, ta, x, ta.positive_clauses, ta.positive_clauses_inverted, ta.negative_clauses, ta.negative_clauses_inverted, ta.positive_included_literals, ta.positive_included_literals_inverted, ta.negative_included_literals, ta.negative_included_literals_inverted, ta.positive_included_literals_idx, ta.negative_included_literals_idx, true, index, exclusive_literals)
+        feedback!(tm, clauses, x, clauses.positive_clauses, clauses.positive_clauses_inverted, clauses.negative_clauses, clauses.negative_clauses_inverted, clauses.positive_included_literals, clauses.positive_included_literals_inverted, clauses.negative_included_literals, clauses.negative_included_literals_inverted, clauses.positive_included_literals_idx, clauses.negative_included_literals_idx, true, index, exclusive_literals)
     else
-        feedback!(tm, ta, x, ta.negative_clauses, ta.negative_clauses_inverted, ta.positive_clauses, ta.positive_clauses_inverted, ta.negative_included_literals, ta.negative_included_literals_inverted, ta.positive_included_literals, ta.positive_included_literals_inverted, ta.negative_included_literals_idx, ta.positive_included_literals_idx, false, index, exclusive_literals)
+        feedback!(tm, clauses, x, clauses.negative_clauses, clauses.negative_clauses_inverted, clauses.positive_clauses, clauses.positive_clauses_inverted, clauses.negative_included_literals, clauses.negative_included_literals_inverted, clauses.positive_included_literals, clauses.positive_included_literals_inverted, clauses.negative_included_literals_idx, clauses.positive_included_literals_idx, false, index, exclusive_literals)
     end
 end
 
 
 function train!(tm::TMClassifier{ClassType}, x::TMInput, y::ClassType; index::Bool=false, exclusive_literals::Bool=false) where ClassType
     classes = tm.classes
-    clauses = tm.clauses
-    @inbounds for i in eachindex(classes)
-        ta = clauses[i]
+    tm_clauses = tm.clauses
+    @inbounds for i in eachindex(tm_clauses)
+        clauses = tm_clauses[i]
         if classes[i] == y
-            feedback!(tm, ta, x, ta.positive_clauses, ta.positive_clauses_inverted, ta.negative_clauses, ta.negative_clauses_inverted, ta.positive_included_literals, ta.positive_included_literals_inverted, ta.negative_included_literals, ta.negative_included_literals_inverted, ta.positive_included_literals_idx, ta.negative_included_literals_idx, true, index, exclusive_literals)
+            feedback!(tm, clauses, x, clauses.positive_clauses, clauses.positive_clauses_inverted, clauses.negative_clauses, clauses.negative_clauses_inverted, clauses.positive_included_literals, clauses.positive_included_literals_inverted, clauses.negative_included_literals, clauses.negative_included_literals_inverted, clauses.positive_included_literals_idx, clauses.negative_included_literals_idx, true, index, exclusive_literals)
         else
-            feedback!(tm, ta, x, ta.negative_clauses, ta.negative_clauses_inverted, ta.positive_clauses, ta.positive_clauses_inverted, ta.negative_included_literals, ta.negative_included_literals_inverted, ta.positive_included_literals, ta.positive_included_literals_inverted, ta.negative_included_literals_idx, ta.positive_included_literals_idx, false, index, exclusive_literals)
+            feedback!(tm, clauses, x, clauses.negative_clauses, clauses.negative_clauses_inverted, clauses.positive_clauses, clauses.positive_clauses_inverted, clauses.negative_included_literals, clauses.negative_included_literals_inverted, clauses.positive_included_literals, clauses.positive_included_literals_inverted, clauses.negative_included_literals_idx, clauses.positive_included_literals_idx, false, index, exclusive_literals)
         end
     end
 end
@@ -541,7 +541,7 @@ function train!(tm::TMClassifier{ClassType}, x_train::Vector{TMInput}, y_train::
 end
 
 
-@inline compile!(ta::TATeam) = ta.positive_clauses = ta.negative_clauses = ta.positive_clauses_inverted = ta.negative_clauses_inverted = nothing
+@inline compile!(clauses::TMClauses) = clauses.positive_clauses = clauses.negative_clauses = clauses.positive_clauses_inverted = clauses.negative_clauses_inverted = nothing
 
 function compile(tm::TMClassifier{<:Bool})
     tmc = deepcopy(tm)
@@ -636,16 +636,16 @@ function benchmark(tm::TMClassifier{ClassType}, X::Vector{TMInput}, Y::Vector{Cl
 end
 
 
-function literals_count(ta::TATeam)
+function literals_count(clauses::TMClauses)
     return (
-        sum(count_ones, ta.positive_included_literals),
-        sum(count_ones, ta.negative_included_literals),
-        sum(count_ones, ta.positive_included_literals_inverted),
-        sum(count_ones, ta.negative_included_literals_inverted)
+        sum(count_ones, clauses.positive_included_literals),
+        sum(count_ones, clauses.negative_included_literals),
+        sum(count_ones, clauses.positive_included_literals_inverted),
+        sum(count_ones, clauses.negative_included_literals_inverted)
     )
 end
 
 literals_sum(tm::TMClassifier{<:Bool}) = sum(literals_count(tm.clauses))
-literals_sum(tm::TMClassifier) = sum(sum(literals_count(ta)) for ta in tm.clauses)
+literals_sum(tm::TMClassifier) = sum(sum(literals_count(clauses)) for clauses in tm.clauses)
 
 end # module

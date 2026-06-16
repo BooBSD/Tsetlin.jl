@@ -3,7 +3,7 @@ include("../Tsetlin.jl")
 export explain
 
 using Base.Threads
-using .Tsetlin: TMInput, TMClassifier, TATeam
+using .Tsetlin: TMInput, TMClassifier, TMClauses
 
 
 struct ExplainedLiteralSum
@@ -42,12 +42,12 @@ end
 end
 
 
-@inline function explain(tm::TMClassifier, ta::TATeam)::ExplainedLiteralSum
+@inline function explain(tm::TMClassifier, clauses::TMClauses)::ExplainedLiteralSum
     return ExplainedLiteralSum(
-        explain(ta.positive_included_literals, tm.clause_size),
-        explain(ta.positive_included_literals_inverted, tm.clause_size),
-        explain(ta.negative_included_literals, tm.clause_size),
-        explain(ta.negative_included_literals_inverted, tm.clause_size),
+        explain(clauses.positive_included_literals, tm.clause_size),
+        explain(clauses.positive_included_literals_inverted, tm.clause_size),
+        explain(clauses.negative_included_literals, tm.clause_size),
+        explain(clauses.negative_included_literals_inverted, tm.clause_size),
     )
 end
 
@@ -90,12 +90,12 @@ function explain(tm::TMClassifier{<:Any, N}, x::TMInput, literals::SubArray{UInt
 end
 
 
-function explain(tm::TMClassifier{<:Any, <:Any, <:Any, <:Any, C}, ta::TATeam, x::TMInput)::Tuple{ExplainedClauses, ExplainedClauses} where C
+function explain(tm::TMClassifier{<:Any, <:Any, <:Any, <:Any, C}, clauses::TMClauses, x::TMInput)::Tuple{ExplainedClauses, ExplainedClauses} where C
     pos = Vector{ExplainedClause}(undef, C)
     neg = Vector{ExplainedClause}(undef, C)
     @inbounds for i in 1:C
-        pos[i] = explain(tm, x, @view(ta.positive_included_literals[:, i]), @view(ta.positive_included_literals_inverted[:, i]))
-        neg[i] = explain(tm, x, @view(ta.negative_included_literals[:, i]), @view(ta.negative_included_literals_inverted[:, i]))
+        pos[i] = explain(tm, x, @view(clauses.positive_included_literals[:, i]), @view(clauses.positive_included_literals_inverted[:, i]))
+        neg[i] = explain(tm, x, @view(clauses.negative_included_literals[:, i]), @view(clauses.negative_included_literals_inverted[:, i]))
     end
     return (
         ExplainedClauses(pos, sum(c.vote for c in pos)),
