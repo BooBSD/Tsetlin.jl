@@ -440,12 +440,12 @@ end
 function predict(tm::TMClassifier{ClassType}, x::TMInput; index::Bool=false)::ClassType where ClassType
     best_vote = typemin(Int64)
     best_cls = typemin(ClassType)
-    clauses = tm.clauses
     classes = tm.classes
+    tm_clauses = tm.clauses
     @inbounds for i in eachindex(classes)
         cls = classes[i]
-        ta = clauses[i]
-        pos, neg = vote(tm, ta, x, index=index)
+        clauses = tm_clauses[i]
+        pos, neg = vote(tm, clauses, x, index=index)
         v = pos - neg
         is_better = v > best_vote
         best_cls = ifelse(is_better, cls, best_cls)
