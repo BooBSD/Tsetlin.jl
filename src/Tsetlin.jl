@@ -88,13 +88,12 @@ mutable struct TATeam{StateType}
     const positive_included_literals_inverted::Matrix{UInt64}
     const negative_included_literals::Matrix{UInt64}
     const negative_included_literals_inverted::Matrix{UInt64}
+    const positive_included_literals_idx::Matrix{UInt64}
+    const negative_included_literals_idx::Matrix{UInt64}
     positive_clauses::Union{Matrix{StateType}, Nothing}
     positive_clauses_inverted::Union{Matrix{StateType}, Nothing}
     negative_clauses::Union{Matrix{StateType}, Nothing}
     negative_clauses_inverted::Union{Matrix{StateType}, Nothing}
-    const positive_included_literals_idx::Matrix{UInt64}
-    const negative_included_literals_idx::Matrix{UInt64}
-    const clause_size::Int64
     const include_limit::StateType
     const state_min::StateType
     const state_max::StateType
@@ -112,7 +111,7 @@ mutable struct TATeam{StateType}
         negative_included_literals = fill(zero(UInt64), chunks_size, ta_clauses_num)
         positive_included_literals_inverted = fill(zero(UInt64), chunks_size, ta_clauses_num)
         negative_included_literals_inverted = fill(zero(UInt64), chunks_size, ta_clauses_num)
-        return new{StateType}(positive_included_literals, positive_included_literals_inverted, negative_included_literals, negative_included_literals_inverted, positive_clauses, positive_clauses_inverted, negative_clauses, negative_clauses_inverted, positive_included_literals_idx, negative_included_literals_idx, clause_size, include_limit, state_min, state_max)
+        return new{StateType}(positive_included_literals, positive_included_literals_inverted, negative_included_literals, negative_included_literals_inverted, positive_included_literals_idx, negative_included_literals_idx, positive_clauses, positive_clauses_inverted, negative_clauses, negative_clauses_inverted, include_limit, state_min, state_max)
     end
 end
 
@@ -125,6 +124,7 @@ mutable struct TMClassifier{ClassType, N, I, TMType, C}
     s::Int64
     L::Int64
     LF::Int64
+    const clause_size::UInt32
     const include_limit::Int64
     const state_min::Int64
     const state_max::Int64
@@ -137,13 +137,14 @@ mutable struct TMClassifier{ClassType, N, I, TMType, C}
         @assert 2 <= states_num <= state_max_available + 1 "states_num must be between 2 to $(state_max_available + 1)."
         @assert 1 <= include_limit <= state_max "include_limit must be between 1 to $(state_max)."
         ClassType = typeof(first(Y))
+        clause_size = length(x)
         N = length(x.chunks)
         I = ceil(Int, N / 64)
         s = round(Int, length(x) / S)
         StateType = STATE_TYPES[findfirst(T -> state_max <= typemax(T), STATE_TYPES)]
         if ClassType == Bool
             TMType = TATeam{StateType}
-            clauses = TATeam{StateType}(length(x), clauses_num, include_limit, 0, state_max)
+            clauses = TATeam{StateType}(clause_size, clauses_num, include_limit, 0, state_max)
             classes_num = 2
             ta_clauses_num = clauses_num
             classes = Memory{Bool}([true, false])
@@ -155,10 +156,10 @@ mutable struct TMClassifier{ClassType, N, I, TMType, C}
             clauses::TMType = TMType(undef, classes_num)
             classes = Memory{ClassType}(ys)
             for i in eachindex(ys)
-                clauses[i] = TATeam{StateType}(length(x), ta_clauses_num, include_limit, 0, state_max)
+                clauses[i] = TATeam{StateType}(clause_size, ta_clauses_num, include_limit, 0, state_max)
             end
         end
-        return new{ClassType, N, I, TMType, ta_clauses_num}(classes_num, clauses_num, T, S, s, L, LF, include_limit, 0, state_max, clauses, classes)
+        return new{ClassType, N, I, TMType, ta_clauses_num}(classes_num, clauses_num, T, S, s, L, LF, clause_size, include_limit, 0, state_max, clauses, classes)
     end
 end
 
@@ -264,7 +265,7 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, <:Any, C}, ta::TATeam{State
     include_limit = ta.include_limit
     state_max = ta.state_max
     state_min = ta.state_min
-    clause_size = ta.clause_size
+    clause_size = tm.clause_size
     last_bit = 63 - ((N << 6) - clause_size)
     chunks = x.chunks
 
@@ -281,7 +282,7 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, <:Any, C}, ta::TATeam{State
             l_idx = @view(literals1_idx[:, j])
             if (!index ? check_clause(tm, x, l, li) : check_clause(tm, x, l, li, l_idx)) > 0
                 if include_literals_sum(l, li, N) < tm.L
-                    # @inbounds for i = 1:ta.clause_size
+                    # @inbounds for i = 1:tm.clause_size
                     #     if (x.x[i] == true) && (c[i] < ta.state_max)
                     #         c[i] += one(StateType)
                     #     end
@@ -317,7 +318,7 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, <:Any, C}, ta::TATeam{State
                         li[n] = ifelse(exclusive_literals, li_mask & ~l[n], li_mask)  # contradiction fix
                     end
                 end
-                # @inbounds for i = 1:ta.clause_size
+                # @inbounds for i = 1:tm.clause_size
                 #     # No random
                 #     if (x.x[i] == false) && (c[i] < ta.include_limit) && (c[i] > ta.state_min)
                 #         c[i] -= one(StateType)
@@ -361,14 +362,14 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, <:Any, C}, ta::TATeam{State
                     rnd1 = rnd % UInt32
                     rnd2 = UInt32(rnd >> 32)
 
-                    i = (rnd1 % UInt32(clause_size)) + one(UInt32)
+                    i = (rnd1 % clause_size) + one(UInt32)
                     c[i] -= StateType(c[i] > state_min)
                     d = (i + 63) >> 6
                     r = (i - 1) & 63
                     l_mask = l[d] & ~(one(UInt64) << r) | UInt64(c[i] >= include_limit) << r
                     l[d] = ifelse(exclusive_literals, l_mask & ~li[d], l_mask)  # contradiction fix
 
-                    i = (rnd2 % UInt32(clause_size)) + one(UInt32)
+                    i = (rnd2 % clause_size) + one(UInt32)
                     ci[i] -= StateType(ci[i] > state_min)
                     d = (i + 63) >> 6
                     r = (i - 1) & 63
@@ -389,7 +390,7 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, <:Any, C}, ta::TATeam{State
             li = @view(literals_inverted2[:, j])
             l_idx = @view(literals2_idx[:, j])
             (!index ? check_clause(tm, x, l, li) : check_clause(tm, x, l, li, l_idx)) > 0 || continue
-            # @inbounds for i = 1:ta.clause_size
+            # @inbounds for i = 1:tm.clause_size
             #     if (x.x[i] == false) && (c[i] < ta.include_limit)
             #         c[i] += one(StateType)
             #     end
