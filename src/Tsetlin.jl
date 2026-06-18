@@ -113,7 +113,7 @@ mutable struct TMClauses{StateType}
 end
 
 
-mutable struct TMClassifier{ClassType, N, I, TMType, C}
+mutable struct TMClassifier{ClassType, N, TMType, C}
     classes_num::Int64
     clauses_num::Int64
     T::Int64
@@ -136,7 +136,6 @@ mutable struct TMClassifier{ClassType, N, I, TMType, C}
         ClassType = typeof(first(Y))
         clause_size = length(x)
         N = length(x.chunks)
-        I = cld(N, 64)
         s = round(Int, length(x) / S)
         StateType = STATE_TYPES[findfirst(T -> state_max <= typemax(T), STATE_TYPES)]
         if ClassType == Bool
@@ -156,16 +155,17 @@ mutable struct TMClassifier{ClassType, N, I, TMType, C}
                 clauses[i] = TMClauses{StateType}(clause_size, ta_clauses_num, include_limit)
             end
         end
-        return new{ClassType, N, I, TMType, ta_clauses_num}(classes_num, clauses_num, T, S, s, L, LF, clause_size, include_limit, 0, state_max, clauses, classes)
+        return new{ClassType, N, TMType, ta_clauses_num}(classes_num, clauses_num, T, S, s, L, LF, clause_size, include_limit, 0, state_max, clauses, classes)
     end
 end
 
 
-@inline function check_clause(tm::TMClassifier{<:Any, <:Any, I}, x::TMInput, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64}, literals_idx::SubArray{UInt64})::Int64 where I
+@inline function check_clause(tm::TMClassifier{<:Any, N}, x::TMInput, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64}, literals_idx::SubArray{UInt64})::Int64 where N
     LF = tm.LF
     c = 0
     chunks = x.chunks
-    @inbounds for i in 1:I
+    nidx = cld(N, 64)
+    @inbounds for i in 1:nidx
         (c >= LF) && return 0  # helps for huge inputs
         idx = literals_idx[i]
         (idx == zero(UInt64)) && continue
@@ -200,7 +200,7 @@ end
 end
 
 
-@inline function vote(tm::TMClassifier{<:Any, <:Any, <:Any, <:Any, C}, clauses::TMClauses, x::TMInput; index::Bool=false)::Tuple{Int64, Int64} where C
+@inline function vote(tm::TMClassifier{<:Any, <:Any, <:Any, C}, clauses::TMClauses, x::TMInput; index::Bool=false)::Tuple{Int64, Int64} where C
     pos = 0
     neg = 0
     if !index
@@ -253,7 +253,7 @@ end
 end
 
 
-function feedback!(tm::TMClassifier{<:Any, N, <:Any, <:Any, C}, clauses::TMClauses{StateType}, x::TMInput, clauses1::Matrix{StateType}, clauses_inverted1::Matrix{StateType}, clauses2::Matrix{StateType}, clauses_inverted2::Matrix{StateType}, literals1::Matrix{UInt64}, literals_inverted1::Matrix{UInt64}, literals2::Matrix{UInt64}, literals_inverted2::Matrix{UInt64}, literals1_idx::Matrix{UInt64}, literals2_idx::Matrix{UInt64}, positive::Bool, index::Bool, exclusive_literals::Bool=false) where {N, StateType, C}
+function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{StateType}, x::TMInput, clauses1::Matrix{StateType}, clauses_inverted1::Matrix{StateType}, clauses2::Matrix{StateType}, clauses_inverted2::Matrix{StateType}, literals1::Matrix{UInt64}, literals_inverted1::Matrix{UInt64}, literals2::Matrix{UInt64}, literals_inverted2::Matrix{UInt64}, literals1_idx::Matrix{UInt64}, literals2_idx::Matrix{UInt64}, positive::Bool, index::Bool, exclusive_literals::Bool=false) where {N, StateType, C}
     T = tm.T
     pos, neg = vote(tm, clauses, x, index=index)
     v = clamp(pos - neg, -T, T)
