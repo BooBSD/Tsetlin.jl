@@ -94,11 +94,8 @@ mutable struct TMClauses{StateType}
     positive_clauses_inverted::Union{Matrix{StateType}, Nothing}
     negative_clauses::Union{Matrix{StateType}, Nothing}
     negative_clauses_inverted::Union{Matrix{StateType}, Nothing}
-    const include_limit::StateType
-    const state_min::StateType
-    const state_max::StateType
 
-    function TMClauses{StateType}(clause_size::Int64, ta_clauses_num::Int64, include_limit::Int64, state_min::Int64, state_max::Int64) where StateType
+    function TMClauses{StateType}(clause_size::Int64, ta_clauses_num::Int64, include_limit::Int64) where StateType
         chunks_size = ceil(Int, clause_size / 64)
         chunks_idx_size = ceil(Int, chunks_size / 64)
         positive_clauses = fill(StateType(include_limit - 1), clause_size, ta_clauses_num)
@@ -111,7 +108,7 @@ mutable struct TMClauses{StateType}
         negative_included_literals = fill(zero(UInt64), chunks_size, ta_clauses_num)
         positive_included_literals_inverted = fill(zero(UInt64), chunks_size, ta_clauses_num)
         negative_included_literals_inverted = fill(zero(UInt64), chunks_size, ta_clauses_num)
-        return new{StateType}(positive_included_literals, positive_included_literals_inverted, negative_included_literals, negative_included_literals_inverted, positive_included_literals_idx, negative_included_literals_idx, positive_clauses, positive_clauses_inverted, negative_clauses, negative_clauses_inverted, include_limit, state_min, state_max)
+        return new{StateType}(positive_included_literals, positive_included_literals_inverted, negative_included_literals, negative_included_literals_inverted, positive_included_literals_idx, negative_included_literals_idx, positive_clauses, positive_clauses_inverted, negative_clauses, negative_clauses_inverted)
     end
 end
 
@@ -125,9 +122,9 @@ mutable struct TMClassifier{ClassType, N, I, TMType, C}
     L::Int64
     LF::Int64
     const clause_size::UInt32
-    const include_limit::Int64
-    const state_min::Int64
-    const state_max::Int64
+    const include_limit::UInt16
+    const state_min::UInt16
+    const state_max::UInt16
     const clauses::TMType
     const classes::Memory{ClassType}
 
@@ -144,7 +141,7 @@ mutable struct TMClassifier{ClassType, N, I, TMType, C}
         StateType = STATE_TYPES[findfirst(T -> state_max <= typemax(T), STATE_TYPES)]
         if ClassType == Bool
             TMType = TMClauses{StateType}
-            clauses = TMClauses{StateType}(clause_size, clauses_num, include_limit, 0, state_max)
+            clauses = TMClauses{StateType}(clause_size, clauses_num, include_limit)
             classes_num = 2
             ta_clauses_num = clauses_num
             classes = Memory{Bool}([true, false])
@@ -156,7 +153,7 @@ mutable struct TMClassifier{ClassType, N, I, TMType, C}
             clauses::TMType = TMType(undef, classes_num)
             classes = Memory{ClassType}(ys)
             for i in eachindex(ys)
-                clauses[i] = TMClauses{StateType}(clause_size, ta_clauses_num, include_limit, 0, state_max)
+                clauses[i] = TMClauses{StateType}(clause_size, ta_clauses_num, include_limit)
             end
         end
         return new{ClassType, N, I, TMType, ta_clauses_num}(classes_num, clauses_num, T, S, s, L, LF, clause_size, include_limit, 0, state_max, clauses, classes)
@@ -262,9 +259,9 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, <:Any, C}, clauses::TMClaus
     v = clamp(pos - neg, -T, T)
     # update = ifelse(positive, T - v, T + v) / (T * 2)
     update = 0.5f0 + ifelse(positive, -v, v) / Float32(T * 2)
-    include_limit = clauses.include_limit
-    state_max = clauses.state_max
-    state_min = clauses.state_min
+    include_limit = StateType(tm.include_limit)
+    state_max = StateType(tm.state_max)
+    state_min = StateType(tm.state_min)
     clause_size = tm.clause_size
     last_bit = 63 - ((N << 6) - clause_size)
     chunks = x.chunks
