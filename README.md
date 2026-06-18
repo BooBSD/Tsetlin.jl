@@ -11,7 +11,7 @@ It achieves over **35 million** MNIST predictions per second at 98% accuracy, wi
 
 ## Key Features
 
-  - Up to **10× faster training** and **35× faster inference** compared to the original FPTM implementation, achieved through the use of bitwise operations, SIMD instructions, and a specialized memory layout.
+  - Up to **15× faster training** and **40× faster inference** compared to the original FPTM implementation, achieved through the use of bitwise operations, SIMD instructions, and a specialized memory layout.
   - Binary classifier.
   - Multi-class classifier.
   - Single-threaded and multi-threaded training and inference.
