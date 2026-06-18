@@ -206,11 +206,15 @@ end
     if !index
         @inbounds for i in 1:C
             pos += check_clause(tm, x, @view(clauses.positive_included_literals[:, i]), @view(clauses.positive_included_literals_inverted[:, i]))
+        end
+        @inbounds for i in 1:C
             neg += check_clause(tm, x, @view(clauses.negative_included_literals[:, i]), @view(clauses.negative_included_literals_inverted[:, i]))
         end
     else
         @inbounds for i in 1:C
             pos += check_clause(tm, x, @view(clauses.positive_included_literals[:, i]), @view(clauses.positive_included_literals_inverted[:, i]), @view(clauses.positive_included_literals_idx[:, i]))
+        end
+        @inbounds for i in 1:C
             neg += check_clause(tm, x, @view(clauses.negative_included_literals[:, i]), @view(clauses.negative_included_literals_inverted[:, i]), @view(clauses.negative_included_literals_idx[:, i]))
         end
     end
