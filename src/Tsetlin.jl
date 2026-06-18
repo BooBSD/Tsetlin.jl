@@ -19,7 +19,7 @@ abstract type AbstractTMInput <: AbstractVector{Bool} end
 # Mutable struct is up to 10% faster
 mutable struct TMInput <: AbstractTMInput
     const chunks::Memory{UInt64}
-    const len::Int64
+    const len::UInt32
 
     function TMInput(x::AbstractArray{Bool})
         len = length(x)
@@ -37,19 +37,19 @@ mutable struct TMInput <: AbstractTMInput
         return new(chunks, len)
     end
 
-    function TMInput(len::Int)
+    function TMInput(len::Integer)
         num_chunks = cld(len, 64)
         chunks = Memory{UInt64}(undef, num_chunks)
         fill!(chunks, zero(UInt64))
         return new(chunks, len)
     end
 
-    function TMInput(::UndefInitializer, len::Int)
+    function TMInput(::UndefInitializer, len::Integer)
         chunks = Memory{UInt64}(undef, cld(len, 64))
         return new(chunks, len)
     end
 
-    function TMInput(chunks::AbstractArray{UInt64}, len::Int64)
+    function TMInput(chunks::AbstractArray{UInt64}, len::Integer)
         return new(chunks, len)
     end
 end
