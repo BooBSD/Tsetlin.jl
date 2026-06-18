@@ -603,7 +603,7 @@ function benchmark(tm::TMClassifier{ClassType}, X::Vector{TMInput}, Y::Vector{Cl
         _X::Vector{TMInput} = Vector{TMInput}(undef, length(perm))
         @threads for i in eachindex(_X)
             # This is 3.5x faster than deepcopy()
-            _X[i] = TMInput(X[perm[i]].chunks, x_len)
+            _X[i] = TMInput(copy(X[perm[i]].chunks), x_len)
             # _X[i] = deepcopy(X[perm[i]])
         end
         X = _X
