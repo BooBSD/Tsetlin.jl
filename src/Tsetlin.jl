@@ -96,8 +96,8 @@ mutable struct TMClauses{StateType}
     negative_clauses_inverted::Union{Matrix{StateType}, Nothing}
 
     function TMClauses{StateType}(clause_size::Int64, ta_clauses_num::Int64, include_limit::Int64) where StateType
-        chunks_size = ceil(Int, clause_size / 64)
-        chunks_idx_size = ceil(Int, chunks_size / 64)
+        chunks_size = cld(clause_size, 64)
+        chunks_idx_size = cld(chunks_size, 64)
         positive_clauses = fill(StateType(include_limit - 1), clause_size, ta_clauses_num)
         negative_clauses = fill(StateType(include_limit - 1), clause_size, ta_clauses_num)
         positive_clauses_inverted = fill(StateType(include_limit - 1), clause_size, ta_clauses_num)
@@ -136,7 +136,7 @@ mutable struct TMClassifier{ClassType, N, I, TMType, C}
         ClassType = typeof(first(Y))
         clause_size = length(x)
         N = length(x.chunks)
-        I = ceil(Int, N / 64)
+        I = cld(N, 64)
         s = round(Int, length(x) / S)
         StateType = STATE_TYPES[findfirst(T -> state_max <= typemax(T), STATE_TYPES)]
         if ClassType == Bool
