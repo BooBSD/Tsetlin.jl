@@ -5,8 +5,9 @@ using Serialization
 using .Tsetlin: TMClassifier, train!, save, load, benchmark, compile
 
 
-X_train, y_train = Serialization.deserialize("/tmp/CIFAR10_train")
-X_test, y_test = Serialization.deserialize("/tmp/CIFAR10_test")
+X_train, y_train = Serialization.deserialize(joinpath(tempdir(), "CIFAR10_train"))
+X_test, y_test = Serialization.deserialize(joinpath(tempdir(), "CIFAR10_test"))
+TM_PATH = joinpath(tempdir(), "tm.tm")
 
 
 CLAUSES = 20  # (69%+ acc)
@@ -55,10 +56,10 @@ EPOCHS = 200
 
 # Training the TM model
 tm = TMClassifier(X_train[1], y_train, CLAUSES, T, S, L, LF, states_num=256, include_limit=240)
-tms = train!(tm, X_train, y_train, X_test, y_test, EPOCHS, index=true)
+train!(tm, X_train, y_train, X_test, y_test, EPOCHS, index=true)
 
-save(tm, "/tmp/tm.tm")
-tm = load("/tmp/tm.tm")
+save(tm, TM_PATH)
+tm = load(TM_PATH)
 tmc = compile(tm)
 
 benchmark(tmc, X_test, y_test, 10 * 2, warmup=true, index=false)

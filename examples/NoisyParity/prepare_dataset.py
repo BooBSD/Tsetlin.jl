@@ -2,6 +2,8 @@
 # License: MIT © 2026 Ole-Christoffer Granmo and the University of Agder
 
 
+import os
+import tempfile
 import numpy as np
 
 
@@ -18,6 +20,9 @@ NUMBER_OF_EXAMPLES = 20_000
 # NUMBER_OF_FEATURES = 24
 # NUMBER_OF_VARIABLES = 8
 # NUMBER_OF_EXAMPLES = 100_000
+
+TRAIN_DATA_PATH = os.path.join(tempfile.gettempdir(), "NoisyParityTrainingData.txt")
+TEST_DATA_PATH = os.path.join(tempfile.gettempdir(), "NoisyParityTestingData.txt")
 
 
 def generate_dataset(
@@ -45,5 +50,5 @@ def generate_dataset(
 X_train, Y_train = generate_dataset(NUMBER_OF_FEATURES, NUMBER_OF_VARIABLES, NUMBER_OF_EXAMPLES, noise=NOISE)
 X_test, Y_test = generate_dataset(NUMBER_OF_FEATURES, NUMBER_OF_VARIABLES, NUMBER_OF_EXAMPLES)
 
-np.savetxt("/tmp/NoisyParityTrainingData.txt", np.hstack([X_train, Y_train.reshape(-1, 1)]), fmt='%d')
-np.savetxt("/tmp/NoisyParityTestingData.txt", np.hstack([X_test, Y_test.reshape(-1, 1)]), fmt='%d')
+np.savetxt(TRAIN_DATA_PATH, np.hstack([X_train, Y_train.reshape(-1, 1)]), fmt='%d')
+np.savetxt(TEST_DATA_PATH, np.hstack([X_test, Y_test.reshape(-1, 1)]), fmt='%d')

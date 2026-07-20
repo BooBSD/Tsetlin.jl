@@ -1,12 +1,20 @@
 # Source: https://github.com/cair/GraphTsetlinMachine/blob/14b0b689ac6559ec51f5dd91ecc8d1f06d13fe7a/examples/recomm_system/prepare_dataset.py
 # License: MIT © 2024 Ahmed K., Ole-Christoffer Granmo
 
+import os
+import tempfile
 import argparse
 import pandas as pd
 import kagglehub
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
+
+
+TRAIN_X_PATH = os.path.join(tempfile.gettempdir(), "Amazon_X_train.txt")
+TRAIN_Y_PATH = os.path.join(tempfile.gettempdir(), "Amazon_Y_train.txt")
+TEST_X_PATH = os.path.join(tempfile.gettempdir(), "Amazon_X_test.txt")
+TEST_Y_PATH = os.path.join(tempfile.gettempdir(), "Amazon_Y_test.txt")
 
 
 def amazon_products():
@@ -190,10 +198,10 @@ def main(args):
     print("Categories: ",len(categories))
     X_train = [[x[0] == u for u in users] + [x[1] == p for p in products] + [x[2] == c for c in categories] for x in X_train]
     X_test = [[x[0] == u for u in users] + [x[1] == p for p in products] + [x[2] == c for c in categories] for x in X_test]
-    np.savetxt("/tmp/Amazon_X_train.txt", X_train, fmt="%d")
-    np.savetxt("/tmp/Amazon_Y_train.txt", Y_train, fmt="%d")
-    np.savetxt("/tmp/Amazon_X_test.txt", X_test, fmt="%d")
-    np.savetxt("/tmp/Amazon_Y_test.txt", Y_test, fmt="%d")
+    np.savetxt(TRAIN_X_PATH, X_train, fmt="%d")
+    np.savetxt(TRAIN_Y_PATH, Y_train, fmt="%d")
+    np.savetxt(TEST_X_PATH, X_test, fmt="%d")
+    np.savetxt(TEST_Y_PATH, Y_test, fmt="%d")
 
 
 def default_args(**kwargs):

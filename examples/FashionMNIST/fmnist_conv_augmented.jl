@@ -4,8 +4,8 @@ using Serialization
 using .Tsetlin: TMClassifier, train!
 
 
-X_train, y_train = Serialization.deserialize("/tmp/FMNIST_train")
-X_test, y_test = Serialization.deserialize("/tmp/FMNIST_test")
+X_train, y_train = Serialization.deserialize(joinpath(tempdir(), "FMNIST_train"))
+X_test, y_test = Serialization.deserialize(joinpath(tempdir(), "FMNIST_test"))
 
 # CLAUSES = 20
 # T = 200
@@ -29,4 +29,4 @@ EPOCHS = 200
 
 # Training the TM model
 tm = TMClassifier(X_train[1], y_train, CLAUSES, T, S, L, LF, states_num=256, include_limit=240)
-tms = train!(tm, X_train, y_train, X_test, y_test, EPOCHS, index=false)
+train!(tm, X_train, y_train, X_test, y_test, EPOCHS, index=false)

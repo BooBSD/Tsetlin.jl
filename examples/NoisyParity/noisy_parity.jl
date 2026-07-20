@@ -5,8 +5,8 @@ using Base.Threads
 using .Tsetlin: TMInput, TMClassifier, train!
 
 
-train = readlines("/tmp/NoisyParityTrainingData.txt")
-test = readlines("/tmp/NoisyParityTestingData.txt")
+train = readlines(joinpath(tempdir(), "NoisyParityTrainingData.txt"))
+test = readlines(joinpath(tempdir(), "NoisyParityTestingData.txt"))
 
 X_train::Vector = Vector{TMInput}(undef, length(train))
 y_train::Vector = Vector{Int8}(undef, length(train))

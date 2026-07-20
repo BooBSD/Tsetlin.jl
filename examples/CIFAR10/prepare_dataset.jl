@@ -10,7 +10,6 @@ using Statistics
 using MLDatasets: CIFAR10
 using .Tsetlin: TMInput, unzip
 
-
 x_train, y_train = unzip([CIFAR10(:train)...])
 x_test, y_test = unzip([CIFAR10(:test)...])
 
@@ -33,7 +32,6 @@ Kx5 = [0 1 2 3 4; -1 0 2 3 3; -2 -2 0 2 2; -3 -3 -2 0 1; -4 -3 -2 -1 0] * one(Fl
 #Kx7 = [0 1 2 3 4 5 6; -1 0 2 3 4 5 5; -2 -2 0 3 4 4 4; -3 -3 -3 0 3 3 3; -4 -4 -4 -3 0 2 2; -5 -5 -4 -3 -2 0 1; -6 -5 -4 -3 -2 -1 0] * one(Float32)
 
 Kx9 = [-1 -1 -1; 2 2 2; -1 -1 -1] * one(Float32)
-
 
 Ky3 = rotl90(Kx3)
 Ky5 = rotl90(Kx5)
@@ -730,7 +728,7 @@ end
 y_train = Int8.(y_train)
 y_test = Int8.(y_test)
 
-Serialization.serialize("/tmp/CIFAR10_train", (X_train, y_train))
-Serialization.serialize("/tmp/CIFAR10_test", (X_test, y_test))
+Serialization.serialize(joinpath(tempdir(), "CIFAR10_train"), (X_train, y_train))
+Serialization.serialize(joinpath(tempdir(), "CIFAR10_test"), (X_test, y_test))
 
 println("Done.")

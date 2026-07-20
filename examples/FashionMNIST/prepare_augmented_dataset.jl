@@ -278,7 +278,7 @@ end
 y_train = Int8.(y_train)
 y_test = Int8.(y_test)
 
-Serialization.serialize("/tmp/FMNIST_train", (X_train, y_train))
-Serialization.serialize("/tmp/FMNIST_test", (X_test, y_test))
+Serialization.serialize(joinpath(tempdir(), "FMNIST_train"), (X_train, y_train))
+Serialization.serialize(joinpath(tempdir(), "FMNIST_test"), (X_test, y_test))
 
 println("Done.")

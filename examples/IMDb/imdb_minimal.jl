@@ -5,8 +5,9 @@ using .Tsetlin: TMInput, TMClassifier, train!, predict, accuracy, benchmark, loa
 
 
 # Loading datasets
-train = readlines("/tmp/IMDBTrainingData.txt")
-test = readlines("/tmp/IMDBTestData.txt")
+TM_PATH = joinpath(tempdir(), "tm.tm")
+train = readlines(joinpath(tempdir(), "IMDBTrainingData.txt"))
+test = readlines(joinpath(tempdir(), "IMDBTestData.txt"))
 
 # Preparing datasets
 x_train = Vector{TMInput}(undef, length(train))
@@ -37,9 +38,9 @@ tm = TMClassifier(x_train[1], y_train, CLAUSES, T, S, L, LF, states_num=256, inc
 tms = train!(tm, x_train, y_train, x_test, y_test, EPOCHS, best_tms_size=1, index=false)
 
 # Saving model
-save(tms[1][1], "/tmp/tm.tm")
+save(tms[1][1], TM_PATH)
 # Loading model
-tm = load("/tmp/tm.tm")
+tm = load(TM_PATH)
 # Benchmark model
 # 135 corresponds to a 5GB input dataset. Feel free to adjust this number if you like.
 benchmark(tm, x_test, y_test, 135, index=false)

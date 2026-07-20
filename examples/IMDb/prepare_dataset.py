@@ -1,6 +1,8 @@
 # Source: https://github.com/cair/tmu/blob/main/examples/classification/IMDbTextCategorizationDemo.py
 # License: MIT © 2023 Centre for Artificial Intelligence Research (CAIR)
 
+import os
+import tempfile
 import argparse
 import numpy as np
 import keras
@@ -9,8 +11,11 @@ from sklearn.feature_selection import chi2
 from sklearn.feature_extraction.text import CountVectorizer
 
 
-def main(args):
+TRAIN_DATA_PATH = os.path.join(tempfile.gettempdir(), "IMDBTrainingData.txt")
+TEST_DATA_PATH = os.path.join(tempfile.gettempdir(), "IMDBTestData.txt")
 
+
+def main(args):
     train, test = keras.datasets.imdb.load_data(num_words=args.imdb_num_words, index_from=args.imdb_index_from)
     train_x, train_y = train
     test_x, test_y = test
@@ -69,10 +74,10 @@ def main(args):
     X_test = SKB.transform(X_test).toarray().astype(np.uint32)
 
     output_test = np.c_[X_test, Y_test]
-    np.savetxt("/tmp/IMDBTestData.txt", output_test, fmt="%d")
+    np.savetxt(TEST_DATA_PATH, output_test, fmt="%d")
 
     output_train = np.c_[X_train, Y_train]
-    np.savetxt("/tmp/IMDBTrainingData.txt", output_train, fmt="%d")
+    np.savetxt(TRAIN_DATA_PATH, output_train, fmt="%d")
 
     print("Done.")
 

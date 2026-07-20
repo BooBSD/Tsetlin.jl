@@ -5,8 +5,8 @@ using .Tsetlin: TMInput, TMClassifier, train!, predict, accuracy, benchmark, loa
 
 
 # Loading datasets
-train = readlines("/tmp/IMDBTrainingData.txt")
-test = readlines("/tmp/IMDBTestData.txt")
+train = readlines(joinpath(tempdir(), "IMDBTrainingData.txt"))
+test = readlines(joinpath(tempdir(), "IMDBTestData.txt"))
 
 # Preparing datasets
 x_train = Vector{TMInput}(undef, length(train))
@@ -42,4 +42,4 @@ EPOCHS = 20
 
 # Training the TM model
 tm = TMClassifier(x_train[1], y_train, CLAUSES, T, S, L, LF, states_num=256, include_limit=220)
-tms = train!(tm, x_train, y_train, x_test, y_test, EPOCHS, index=true)
+train!(tm, x_train, y_train, x_test, y_test, EPOCHS, index=true)
