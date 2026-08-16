@@ -360,8 +360,7 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
                 @inbounds for _ in 1:tm.s
                     # Extracting two random UInt32 values from a single UInt64
                     rnd = rand(UInt64)
-                    rnd1 = rnd % UInt32
-                    rnd2 = UInt32(rnd >> 32)
+                    rnd1, rnd2 = minmax(rnd % UInt32, UInt32(rnd >> 32))
 
                     i = (rnd1 % clause_size) + one(UInt32)
                     c[i] -= StateType(c[i] > state_min)
