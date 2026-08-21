@@ -141,7 +141,7 @@ benchmark(tm, x_test, y_test, 1000 * 4, warmup=true, index=false)
 
 38 million MNIST predictions per second on a CPU.
 
-<img width="564" height="296" alt="38 million MNIST predictions per second on a CPU using the latest FPTM library Tsetlin.jl" src="https://github.com/user-attachments/assets/2ac4699b-2b1a-4b41-b677-29b99043e577" />
+<img width="560" height="345" alt="38 million MNIST predictions per second on a CPU using the latest FPTM library Tsetlin.jl" src="https://github.com/user-attachments/assets/106c6b58-4fcd-4827-90a1-d3ff5b81c9cc" />
 
 ## Explainability Tools
 
