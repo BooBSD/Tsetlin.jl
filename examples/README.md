@@ -114,6 +114,14 @@ Run the Noisy Amazon Sales training example:
 julia -O3 -t auto examples/AmazonSales/amazon.jl
 ```
 
+### Fashion-MNIST Example Using HyperDimensional Computing Hypervectors
+
+Run the Fashion-MNIST HDC training example:
+
+```shell
+julia -O3 -t auto examples/FashionMNIST/fmnist_hdc.jl
+```
+
 ### Fashion-MNIST Example Using Convolutional Preprocessing
 
 Run the Fashion-MNIST training example:
