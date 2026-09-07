@@ -144,6 +144,14 @@ Run the example that trains a large model on Fashion-MNIST:
 julia -O3 -t auto examples/FashionMNIST/fmnist_conv_augmented.jl
 ```
 
+### CIFAR-10 Example Using HyperDimensional Computing Hypervectors
+
+Run the CIFAR-10 HDC training example:
+
+```shell
+julia -O3 -t auto examples/CIFAR10/cifar10_hdc.jl
+```
+
 ### CIFAR-10 Example Using Convolutional Preprocessing
 
 Prepare the CIFAR-10 dataset:
