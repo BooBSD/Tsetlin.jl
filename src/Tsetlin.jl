@@ -77,7 +77,7 @@ end
 @inline Base.setindex!(x::TMInput, v, i::Int) = setindex!(x, convert(Bool, v), i)
 
 
-booleanize(x, ts...) = TMInput(vec(vec(x) .> reshape([ts...], 1, :)))
+booleanize(x, ts...) = TMInput([val > t for t in ts for val in vec(x)])
 
 
 const STATE_TYPES = (UInt8, UInt16)
