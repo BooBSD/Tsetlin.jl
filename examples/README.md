@@ -174,6 +174,22 @@ Run the CIFAR-10 training example:
 julia -O3 -t auto examples/CIFAR10/cifar10_conv.jl
 ```
 
+### CIFAR-100 Example Using HyperDimensional Computing Hypervectors
+
+Run the CIFAR-100 HDC training example:
+
+```shell
+julia -O3 -t auto examples/CIFAR100/cifar100_hdc.jl
+```
+
+### CIFAR-100 Contrastive Learning Example Using HyperDimensional Computing Hypervectors
+
+Run the CIFAR-100 **Contrastive Learning** HDC training example:
+
+```shell
+julia -O3 -t auto examples/CIFAR100/cifar100_hdc_contrastive_learning.jl
+```
+
 ### Noisy Parity Problem
 
 Prepare the dataset:
