@@ -12,8 +12,8 @@ using MLDatasets: CIFAR10
 using .Tsetlin: TMInput, TMClassifier, train!, unzip, vote, accuracy, literals_sum
 
 
-const HV_PATH = "/tmp/hvectors_cifar"
-const DATASET_PATH = "/tmp/dataset_cifar"
+const HV_PATH = joinpath(tempdir(), "hvectors_cifar")
+const DATASET_PATH = joinpath(tempdir(), "dataset_cifar")
 const DATASET_CACHING = false
 const HV_DIMENSIONS = 1024 * 64
 const BUNDLE_ACC_TYPE = Float32
