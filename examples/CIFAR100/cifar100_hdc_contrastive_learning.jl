@@ -21,17 +21,17 @@ const RANDOM_NEGATIVE_SAMPLE = false
 
 const HV_NUMBERS = 3 + 32 + 32
 
-# const CLAUSES = 128
-# const T = 1024 * 2
-# const S = 1024 * 64
-# const L = 1024 * 32
-# const LF = 1024 * 32
-
-const CLAUSES = 512
-const T = 1024 * 4
+const CLAUSES = 128
+const T = 1024 * 2
 const S = 1024 * 64
 const L = 1024 * 32
 const LF = 1024 * 32
+
+# const CLAUSES = 512
+# const T = 1024 * 4
+# const S = 1024 * 64
+# const L = 1024 * 32
+# const LF = 1024 * 32
 
 const STATES_NUM = 64000
 const INCLUDE_LIMIT = 32000
