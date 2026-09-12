@@ -152,6 +152,14 @@ Run the CIFAR-10 HDC training example:
 julia -O3 -t auto examples/CIFAR10/cifar10_hdc.jl
 ```
 
+### CIFAR-10 Contrastive Learning Example Using HyperDimensional Computing Hypervectors
+
+Run the CIFAR-10 **Contrastive Learning** HDC training example:
+
+```shell
+julia -O3 -t auto examples/CIFAR10/cifar10_hdc_contrastive_learning.jl
+```
+
 ### CIFAR-10 Example Using Convolutional Preprocessing
 
 Prepare the CIFAR-10 dataset:
