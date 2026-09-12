@@ -11,13 +11,8 @@ using MLDatasets: MNIST, FashionMNIST
 using .Tsetlin: TMInput, TMClassifier, train!, unzip
 
 
-# x_train, y_train = unzip([MNIST(:train, Tx=Float32)...])
-# x_test, y_test = unzip([MNIST(:test, Tx=Float32)...])
-x_train, y_train = unzip([FashionMNIST(:train, Tx=Float32)...])
-x_test, y_test = unzip([FashionMNIST(:test, Tx=Float32)...])
-
-const HV_PATH = "/tmp/hvectors_fmnist"
-const DATASET_PATH = "/tmp/dataset_fmnist"
+const HV_PATH = joinpath(tempdir(), "hvectors_fmnist")
+const DATASET_PATH = joinpath(tempdir(), "dataset_fmnist")
 const DATASET_CACHING = false
 const HV_DIMENSIONS = 1024 * 32
 const BUNDLE_ACC_TYPE = Float32
@@ -36,7 +31,9 @@ const LF = 1024 * 16
 # const L = 1024 * 16
 # const LF = 1024 * 16
 
-EPOCHS = 1000
+const STATES_NUM = 64000
+const INCLUDE_LIMIT = 32000
+const EPOCHS = 1000
 
 
 function bundle!(
@@ -77,6 +74,10 @@ if DATASET_CACHING
     println("Done.")
 else
     print("\nPreparing dataset... ")
+    # x_train, y_train = unzip([MNIST(:train, Tx=Float32)...])
+    # x_test, y_test = unzip([MNIST(:test, Tx=Float32)...])
+    x_train, y_train = unzip([FashionMNIST(:train, Tx=Float32)...])
+    x_test, y_test = unzip([FashionMNIST(:test, Tx=Float32)...])
     n_default = Threads.nthreads(:default)
     n_interact = Threads.nthreads(:interactive)
     prepare_time = @elapsed begin
@@ -110,5 +111,5 @@ end
 
 
 # Training the TM model
-tm = TMClassifier(X_train[1], y_train, CLAUSES, T, S, L, LF, states_num=64000, include_limit=32000)
-tms = train!(tm, X_train, y_train, X_test, y_test, EPOCHS, index=false, exclusive_literals=false, best_tms_size=0)
+tm = TMClassifier(X_train[1], y_train, CLAUSES, T, S, L, LF, states_num=STATES_NUM, include_limit=INCLUDE_LIMIT)
+train!(tm, X_train, y_train, X_test, y_test, EPOCHS, exclusive_literals=false)
