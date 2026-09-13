@@ -495,7 +495,7 @@ end
 
 
 function train!(tm::TMClassifier{ClassType}, X::Vector{TMInput}, Y::Vector{ClassType}; shuffle::Bool=true, index::Bool=false, exclusive_literals::Bool=false) where ClassType
-    @threads for i in ifelse(shuffle, randperm(length(Y)), eachindex(Y))
+    @threads for i in (shuffle ? randperm(length(Y)) : eachindex(Y))
         train!(tm, X[i], Y[i], index=index, exclusive_literals=exclusive_literals)
     end
 end
