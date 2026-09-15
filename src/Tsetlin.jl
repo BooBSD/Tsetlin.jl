@@ -261,6 +261,8 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
     T = tm.T
     pos, neg = vote(tm, clauses, x, index=index)
     v = clamp(pos - neg, -T, T)
+    # Early exit
+    ifelse(!positive, -T, T) == v && return
     # update = ifelse(positive, T - v, T + v) / (T * 2)
     update = 0.5f0 + ifelse(positive, -v, v) / Float32(T * 2)
     include_limit = StateType(tm.include_limit)
