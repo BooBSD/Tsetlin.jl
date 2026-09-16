@@ -55,7 +55,7 @@ EPOCHS = 1000
 
 # Training the TM model
 tm = TMClassifier(x_train[1], y_train, CLAUSES, T, S, L, LF, states_num=256, include_limit=128)
-train!(tm, x_train, y_train, x_test, y_test, EPOCHS, index=false)
+train!(tm, x_train, y_train, x_test, y_test, EPOCHS, index=false, shuffle=false)
 
 # Compiling model
 tmc = compile(tm)

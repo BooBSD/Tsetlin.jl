@@ -90,7 +90,7 @@ function explain(tm::TMClassifier{<:Any, N}, x::TMInput, literals::SubArray{UInt
 end
 
 
-function explain(tm::TMClassifier{<:Any, <:Any, <:Any, <:Any, C}, clauses::TMClauses, x::TMInput)::Tuple{ExplainedClauses, ExplainedClauses} where C
+function explain(tm::TMClassifier{<:Any, <:Any, <:Any, C}, clauses::TMClauses, x::TMInput)::Tuple{ExplainedClauses, ExplainedClauses} where C
     pos = Vector{ExplainedClause}(undef, C)
     neg = Vector{ExplainedClause}(undef, C)
     @inbounds for i in 1:C
