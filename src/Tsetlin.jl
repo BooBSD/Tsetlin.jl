@@ -531,7 +531,7 @@ function train!(tm::TMClassifier{ClassType}, x_train::Vector{TMInput}, y_train::
         end
     end
     if verbose > 0
-        elapsed = Time(0) + Second(floor(Int, all_time))
+        elapsed = Time(0) + Second(round(Int, all_time))
         multiplier = ifelse(ClassType == Bool, 1, 2)
         average_clause_density = round((literals_sum(tm) / (tm.classes_num * tm.clauses_num * multiplier)) / length(x_train[1]) * 100, digits=2)
         @printf("\n%s epochs done in %s. Best accuracy: %.2f%%.\n", epochs, elapsed, best_acc * 100)
