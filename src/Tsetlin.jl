@@ -365,18 +365,17 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
             end
         else
             for _ in 1:tm.s
-                # Extracting two random UInt32 values from a single UInt64
+                # Extracting two random UInt32 values from a single random UInt64
                 rnd = rand(UInt64)
-                rnd1, rnd2 = minmax(rnd % UInt32, UInt32(rnd >> 32))
 
-                i = (rnd1 % clause_size) + one(UInt32)
+                i = (rnd % clause_size) + one(UInt32)
                 c[i] -= StateType(c[i] > state_min)
                 d = (i + 63) >> 6
                 r = (i - 1) & 63
                 l_mask = l[d] & ~(one(UInt64) << r) | UInt64(c[i] >= include_limit) << r
                 l[d] = ifelse(exclusive_literals, l_mask & ~li[d], l_mask)  # contradiction fix
 
-                i = (rnd2 % clause_size) + one(UInt32)
+                i = ((rnd >> 32) % clause_size) + one(UInt32)
                 ci[i] -= StateType(ci[i] > state_min)
                 d = (i + 63) >> 6
                 r = (i - 1) & 63
