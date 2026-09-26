@@ -290,7 +290,7 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
         j += next_clause_jump(inv_log)
         if (!index ? check_clause(tm, x, l, li) : check_clause(tm, x, l, li, l_idx)) > 0
             if include_literals_sum(l, li, N) < tm.L
-                # @inbounds for i = 1:tm.clause_size
+                # for i = 1:tm.clause_size
                 #     if (x.x[i] == true) && (c[i] < state_max)
                 #         c[i] += one(StateType)
                 #     end
@@ -299,7 +299,7 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
                 #     end
                 # end
                 # Two loops are a bit faster than one.
-                @inbounds for n in 1:N
+                for n in 1:N
                     std_mask = chunks[n]
                     (std_mask == zero(UInt64)) && continue
                     base = n * 64 - 63
@@ -312,7 +312,7 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
                     end
                     l[n] = ifelse(exclusive_literals, l_mask & ~li[n], l_mask)  # contradiction fix
                 end
-                @inbounds for n in 1:N
+                for n in 1:N
                     inv_mask = ~chunks[n]
                     (inv_mask == zero(UInt64)) && continue
                     base = n * 64 - 63
@@ -326,7 +326,7 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
                     li[n] = ifelse(exclusive_literals, li_mask & ~l[n], li_mask)  # contradiction fix
                 end
             end
-            # @inbounds for i = 1:tm.clause_size
+            # for i = 1:tm.clause_size
             #     # No random
             #     if (x.x[i] == false) && (c[i] < include_limit) && (c[i] > state_min)
             #         c[i] -= one(StateType)
@@ -337,7 +337,7 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
             #     end
             # end
             # Two loops are a bit faster than one.
-            @inbounds for n in 1:N
+            for n in 1:N
                 std_mask = ~chunks[n] & ~l[n]
                 (std_mask == zero(UInt64)) && continue
                 base = n * 64 - 63
@@ -350,7 +350,7 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
                 end
                 l[n] = ifelse(exclusive_literals, l_mask & ~li[n], l_mask)  # contradiction fix
             end
-            @inbounds for n in 1:N
+            for n in 1:N
                 inv_mask = chunks[n] & ~li[n]
                 (inv_mask == zero(UInt64)) && continue
                 base = n * 64 - 63
@@ -364,7 +364,7 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
                 li[n] = ifelse(exclusive_literals, li_mask & ~l[n], li_mask)  # contradiction fix
             end
         else
-            @inbounds for _ in 1:tm.s
+            for _ in 1:tm.s
                 # Extracting two random UInt32 values from a single UInt64
                 rnd = rand(UInt64)
                 rnd1, rnd2 = minmax(rnd % UInt32, UInt32(rnd >> 32))
@@ -396,7 +396,7 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
         l_idx = @view(literals2_idx[:, j])
         j += next_clause_jump(inv_log)
         (!index ? check_clause(tm, x, l, li) : check_clause(tm, x, l, li, l_idx)) > 0 || continue
-        # @inbounds for i = 1:tm.clause_size
+        # for i = 1:tm.clause_size
         #     if (x.x[i] == false) && (c[i] < include_limit)
         #         c[i] += one(StateType)
         #     end
@@ -405,7 +405,7 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
         #     end
         # end
         # Two loops are a bit faster than one.
-        @inbounds for n in 1:N
+        for n in 1:N
             std_mask = ~chunks[n] & ~l[n]
             (std_mask == zero(UInt64)) && continue
             base = n * 64 - 63
@@ -418,7 +418,7 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
             end
             l[n] = ifelse(exclusive_literals, l_mask & ~li[n], l_mask)  # contradiction fix
         end
-        @inbounds for n in 1:N
+        for n in 1:N
             inv_mask = chunks[n] & ~li[n]
             (inv_mask == zero(UInt64)) && continue
             base = n * 64 - 63
