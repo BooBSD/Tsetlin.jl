@@ -123,7 +123,7 @@ all_time = @elapsed begin
                 end
             end
         end
-        epoch_time = Time(0) + Second(floor(Int, epoch_time))
+        epoch_time = Time(0) + Second(round(Int, epoch_time))
         println("Epoch #$(epoch) elapsed in $(epoch_time).")
         if mod(epoch, SAVE_MODEL_EVERY_EPOCH) == 0
             save(compile(tm), TM_PATH)
