@@ -251,7 +251,7 @@ end
 end
 
 
-@generated function sat_add(x::T, y::T) where {T<:Unsigned}
+@inline @generated function sat_add(x::T, y::T) where {T<:Unsigned}
     W = sizeof(T) * 8
     body = """
         %res = call i$W @llvm.uadd.sat.i$W(i$W %0, i$W %1)
@@ -260,7 +260,7 @@ end
     return :(Base.llvmcall($body, $T, Tuple{$T, $T}, x, y))
 end
 
-@generated function sat_sub(x::T, y::T) where {T<:Unsigned}
+@inline @generated function sat_sub(x::T, y::T) where {T<:Unsigned}
     W = sizeof(T) * 8
     body = """
         %res = call i$W @llvm.usub.sat.i$W(i$W %0, i$W %1)
@@ -374,14 +374,14 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
                 # Extracting two random UInt32 values from a single random UInt64
                 rnd = rand(UInt64)
 
-                i = (rnd % clause_size) + one(UInt32)
+                i = rem(rnd, clause_size) + one(UInt32)
                 c[i] = sat_sub(c[i], one(StateType))
                 d = (i + 63) >> 6
                 r = (i - 1) & 63
                 l_mask = l[d] & ~(1 << r) | UInt64(c[i] >= include_limit) << r
                 l[d] = ifelse(exclusive_literals, l_mask & ~li[d], l_mask)  # contradiction fix
 
-                i = ((rnd >> 32) % clause_size) + one(UInt32)
+                i = rem((rnd >> 32), clause_size) + one(UInt32)
                 ci[i] = sat_sub(ci[i], one(StateType))
                 d = (i + 63) >> 6
                 r = (i - 1) & 63
