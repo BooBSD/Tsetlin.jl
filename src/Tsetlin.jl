@@ -260,6 +260,7 @@ end
     return :(Base.llvmcall($body, $T, Tuple{$T, $T}, x, y))
 end
 
+
 @inline @generated function sat_sub(x::T, y::T) where {T<:Unsigned}
     W = sizeof(T) * 8
     body = """
@@ -313,8 +314,9 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
                     l_mask = zero(UInt64)
                     @simd for i in 0:stop_bit
                         ii = base + i
-                        c[ii] = sat_add(c[ii], StateType((std_mask >> i) & 1))
-                        l_mask |= UInt64(c[ii] >= include_limit) << i
+                        new_c = sat_add(c[ii], StateType((std_mask >> i) & 1))
+                        l_mask |= UInt64(new_c >= include_limit) << i
+                        c[ii] = new_c
                     end
                     l[n] = ifelse(exclusive_literals, l_mask & ~li[n], l_mask)  # contradiction fix
                 end
@@ -326,8 +328,9 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
                     li_mask = zero(UInt64)
                     @simd for i in 0:stop_bit
                         ii = base + i
-                        ci[ii] = sat_add(ci[ii], StateType((inv_mask >> i) & 1))
-                        li_mask |= UInt64(ci[ii] >= include_limit) << i
+                        new_ci = sat_add(ci[ii], StateType((inv_mask >> i) & 1))
+                        li_mask |= UInt64(new_ci >= include_limit) << i
+                        ci[ii] = new_ci
                     end
                     li[n] = ifelse(exclusive_literals, li_mask & ~l[n], li_mask)  # contradiction fix
                 end
@@ -351,8 +354,9 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
                 l_mask = zero(UInt64)
                 @simd for i in 0:stop_bit
                     ii = base + i
-                    c[ii] = sat_sub(c[ii], StateType((std_mask >> i) & 1))
-                    l_mask |= UInt64(c[ii] >= include_limit) << i
+                    new_c = sat_sub(c[ii], StateType((std_mask >> i) & 1))
+                    l_mask |= UInt64(new_c >= include_limit) << i
+                    c[ii] = new_c
                 end
                 l[n] = ifelse(exclusive_literals, l_mask & ~li[n], l_mask)  # contradiction fix
             end
@@ -364,8 +368,9 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
                 li_mask = zero(UInt64)
                 @simd for i in 0:stop_bit
                     ii = base + i
-                    ci[ii] = sat_sub(ci[ii], StateType((inv_mask >> i) & 1))
-                    li_mask |= UInt64(ci[ii] >= include_limit) << i
+                    new_ci = sat_sub(ci[ii], StateType((inv_mask >> i) & 1))
+                    li_mask |= UInt64(new_ci >= include_limit) << i
+                    ci[ii] = new_ci
                 end
                 li[n] = ifelse(exclusive_literals, li_mask & ~l[n], li_mask)  # contradiction fix
             end
@@ -375,17 +380,19 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
                 rnd = rand(UInt64)
 
                 i = rem(rnd, clause_size) + one(UInt32)
-                c[i] = sat_sub(c[i], one(StateType))
+                new_c = sat_sub(c[i], one(StateType))
                 d = (i + 63) >> 6
                 r = (i - 1) & 63
-                l_mask = l[d] & ~(1 << r) | UInt64(c[i] >= include_limit) << r
+                l_mask = l[d] & ~(1 << r) | UInt64(new_c >= include_limit) << r
+                c[i] = new_c
                 l[d] = ifelse(exclusive_literals, l_mask & ~li[d], l_mask)  # contradiction fix
 
                 i = rem((rnd >> 32), clause_size) + one(UInt32)
-                ci[i] = sat_sub(ci[i], one(StateType))
+                new_ci = sat_sub(ci[i], one(StateType))
                 d = (i + 63) >> 6
                 r = (i - 1) & 63
-                li_mask = li[d] & ~(1 << r) | UInt64(ci[i] >= include_limit) << r
+                li_mask = li[d] & ~(1 << r) | UInt64(new_ci >= include_limit) << r
+                ci[i] = new_ci
                 li[d] = ifelse(exclusive_literals, li_mask & ~l[d], li_mask)  # contradiction fix
             end
         end
@@ -418,8 +425,9 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
             l_mask = zero(UInt64)
             @simd for i in 0:stop_bit
                 ii = base + i
-                c[ii] = sat_add(c[ii], StateType((std_mask >> i) & 1))
-                l_mask |= UInt64(c[ii] >= include_limit) << i
+                new_c = sat_add(c[ii], StateType((std_mask >> i) & 1))
+                l_mask |= UInt64(new_c >= include_limit) << i
+                c[ii] = new_c
             end
             l[n] = ifelse(exclusive_literals, l_mask & ~li[n], l_mask)  # contradiction fix
         end
@@ -431,8 +439,9 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
             li_mask = zero(UInt64)
             @simd for i in 0:stop_bit
                 ii = base + i
-                ci[ii] = sat_add(ci[ii], StateType((inv_mask >> i) & 1))
-                li_mask |= UInt64(ci[ii] >= include_limit) << i
+                new_ci = sat_add(ci[ii], StateType((inv_mask >> i) & 1))
+                li_mask |= UInt64(new_ci >= include_limit) << i
+                ci[ii] = new_ci
             end
             li[n] = ifelse(exclusive_literals, li_mask & ~l[n], li_mask)  # contradiction fix
         end
