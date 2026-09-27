@@ -345,34 +345,18 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
             #         ci[i] -= one(StateType)
             #     end
             # end
-            # Two loops are a bit faster than one.
+            # We do not need to update the include-literal masks because this feedback logic only decrements excluded literals.
             for n in 1:N
                 std_mask = ~chunks[n] & ~l[n]
-                (std_mask == zero(UInt64)) && continue
-                base = n * 64 - 63
-                stop_bit = ifelse(n == N, last_bit, 63)
-                l_mask = zero(UInt64)
-                @simd for i in 0:stop_bit
-                    ii = base + i
-                    new_c = sat_sub(c[ii], StateType((std_mask >> i) & 1))
-                    l_mask |= UInt64(new_c >= include_limit) << i
-                    c[ii] = new_c
-                end
-                l[n] = ifelse(exclusive_literals, l_mask & ~li[n], l_mask)  # contradiction fix
-            end
-            for n in 1:N
                 inv_mask = chunks[n] & ~li[n]
-                (inv_mask == zero(UInt64)) && continue
+                ((std_mask | inv_mask) == zero(UInt64)) && continue
                 base = n * 64 - 63
                 stop_bit = ifelse(n == N, last_bit, 63)
-                li_mask = zero(UInt64)
                 @simd for i in 0:stop_bit
                     ii = base + i
-                    new_ci = sat_sub(ci[ii], StateType((inv_mask >> i) & 1))
-                    li_mask |= UInt64(new_ci >= include_limit) << i
-                    ci[ii] = new_ci
+                    c[ii] = sat_sub(c[ii], StateType((std_mask >> i) & 1))
+                    ci[ii] = sat_sub(ci[ii], StateType((inv_mask >> i) & 1))
                 end
-                li[n] = ifelse(exclusive_literals, li_mask & ~l[n], li_mask)  # contradiction fix
             end
         else
             for _ in 1:tm.s
