@@ -282,7 +282,7 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
     inv_log = 1.0 / log1p(-update)
 
     include_limit = StateType(tm.include_limit)
-    clause_size = tm.clause_size
+    clause_size = Int(tm.clause_size)
     last_bit = 63 - ((N << 6) - clause_size)
     chunks = x.chunks
 
@@ -363,7 +363,7 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
                 # Extracting two random UInt32 values from a single random UInt64
                 rnd = rand(UInt64)
 
-                i = rem(rnd, clause_size) + one(UInt32)
+                i = rem(rnd, clause_size) + 1
                 new_c = sat_sub(c[i], one(StateType))
                 d = (i + 63) >> 6
                 r = (i - 1) & 63
@@ -371,7 +371,7 @@ function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{Stat
                 c[i] = new_c
                 l[d] = ifelse(exclusive_literals, l_mask & ~li[d], l_mask)  # contradiction fix
 
-                i = rem((rnd >> 32), clause_size) + one(UInt32)
+                i = rem((rnd >> 32), clause_size) + 1
                 new_ci = sat_sub(ci[i], one(StateType))
                 d = (i + 63) >> 6
                 r = (i - 1) & 63
