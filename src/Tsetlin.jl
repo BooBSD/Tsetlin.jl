@@ -114,15 +114,15 @@ end
 
 
 mutable struct TMClassifier{ClassType, N, TMType, C}
-    const clauses::TMType
     const classes::Memory{ClassType}
-    classes_num::Int64
-    clauses_num::Int64
-    T::Int64
-    S::Int64
-    s::Int64
-    L::Int64
-    LF::Int64
+    const clauses::TMType
+    classes_num::Int32
+    clauses_num::Int32
+    T::Int32
+    S::Int32
+    s::Int32
+    L::Int32
+    LF::Int32
     const clause_size::UInt32
     const include_limit::UInt16
     const states_num::UInt16
@@ -154,12 +154,12 @@ mutable struct TMClassifier{ClassType, N, TMType, C}
                 clauses[i] = TMClauses{StateType}(clause_size, ta_clauses_num, include_limit)
             end
         end
-        return new{ClassType, N, TMType, ta_clauses_num}(clauses, classes, classes_num, clauses_num, T, S, s, L, LF, clause_size, include_limit, states_num - 1)
+        return new{ClassType, N, TMType, ta_clauses_num}(classes, clauses, classes_num, clauses_num, T, S, s, L, LF, clause_size, include_limit, states_num - 1)
     end
 end
 
 
-@inline function check_clause(tm::TMClassifier{<:Any, N}, x::TMInput, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64}, literals_idx::SubArray{UInt64})::Int64 where N
+@inline function check_clause(tm::TMClassifier{<:Any, N}, x::TMInput, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64}, literals_idx::SubArray{UInt64})::Int where N
     LF = tm.LF
     c = 0
     chunks = x.chunks
@@ -184,7 +184,7 @@ end
 end
 
 
-@inline function check_clause(tm::TMClassifier{<:Any, N}, x::TMInput, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64})::Int64 where N
+@inline function check_clause(tm::TMClassifier{<:Any, N}, x::TMInput, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64})::Int where N
     c = 0
     chunks = x.chunks
     @inbounds @simd for n in 1:N
@@ -199,7 +199,7 @@ end
 end
 
 
-@inline function vote(tm::TMClassifier{<:Any, <:Any, <:Any, C}, clauses::TMClauses, x::TMInput; index::Bool=false)::Tuple{Int64, Int64} where C
+@inline function vote(tm::TMClassifier{<:Any, <:Any, <:Any, C}, clauses::TMClauses, x::TMInput; index::Bool=false)::Tuple{Int, Int} where C
     pos = 0
     neg = 0
     if !index
@@ -237,7 +237,7 @@ end
 end
 
 
-@inline function include_literals_sum(a::SubArray{UInt64}, b::SubArray{UInt64}, N::Int64)::Int64
+@inline function include_literals_sum(a::SubArray{UInt64}, b::SubArray{UInt64}, N::Int)::Int
     c = 0
     @inbounds @simd for n in 1:N
         c += count_ones(a[n] | b[n])
@@ -511,7 +511,7 @@ function train!(tm::TMClassifier{ClassType}, X::Vector{TMInput}, Y::Vector{Class
 end
 
 
-function train!(tm::TMClassifier{ClassType}, x_train::Vector{TMInput}, y_train::Vector{ClassType}, x_test::Vector{TMInput}, y_test::Vector{ClassType}, epochs::Int64; shuffle::Bool=true, index::Bool=false, verbose::Int=1, best_tms_size::Int64=0, best_tms_compile::Bool=true, exclusive_literals::Bool=false)::Vector{Tuple{TMClassifier, Float64}} where ClassType
+function train!(tm::TMClassifier{ClassType}, x_train::Vector{TMInput}, y_train::Vector{ClassType}, x_test::Vector{TMInput}, y_test::Vector{ClassType}, epochs::Int; shuffle::Bool=true, index::Bool=false, verbose::Int=1, best_tms_size::Int=0, best_tms_compile::Bool=true, exclusive_literals::Bool=false)::Vector{Tuple{TMClassifier, Float64}} where ClassType
     @assert best_tms_size in 0:2000
     if verbose > 0
         density = round(sum(sum(x) for x in x_train) / (length(x_train[1]) * length(x_train)) * 100, digits=2)
@@ -586,7 +586,7 @@ function load(filepath::AbstractString)
 end
 
 
-function benchmark(tm::TMClassifier{ClassType}, X::Vector{TMInput}, Y::Vector{ClassType}, loops::Int64; warmup::Bool=true, index::Bool=false) where ClassType
+function benchmark(tm::TMClassifier{ClassType}, X::Vector{TMInput}, Y::Vector{ClassType}, loops::Int; warmup::Bool=true, index::Bool=false) where ClassType
     density = round(sum(sum(x) for x in X) / (length(X[1]) * length(X)) * 100, digits=2)
     multiplier = ifelse(ClassType == Bool, 1, 2)
     average_clause_density = round((literals_sum(tm) / (tm.classes_num * tm.clauses_num * multiplier)) / length(X[1]) * 100, digits=2)
@@ -601,7 +601,7 @@ function benchmark(tm::TMClassifier{ClassType}, X::Vector{TMInput}, Y::Vector{Cl
         len = length(Y)
         x_len = X[1].len
         perm = Vector{Int32}(undef, len * loops)
-        i::Int64 = 0
+        i = 0
         @inbounds @fastmath for _ in 1:loops
             @inbounds @fastmath for r in Random.shuffle(UnitRange{Int32}(1:len))
                 i += 1
