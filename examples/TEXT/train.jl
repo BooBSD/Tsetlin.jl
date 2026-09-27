@@ -21,7 +21,7 @@ CORPUS_LENGTH = length(CORPUS)
 function get_stochastic_updates(weight::Float64)::Int
     base_count = floor(Int, weight)
     probability = weight - base_count
-    extra = rand() < probability ? 1 : 0    
+    extra = rand() < probability ? 1 : 0
     return base_count + extra
 end
 
@@ -89,7 +89,7 @@ tm = TMClassifier(x_sample, y_samples, CLAUSES, T, S, L, LF, states_num=STATES_N
 save(compile(tm), TM_PATH)  # Save empty model for sample()
 
 density = round(sum(x_sample) / length(x_sample) * 100, digits=2)
-println("\nClasses: $(tm.classes_num), clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), LF: $(tm.LF), states_num: $(tm.state_max + 1), include_limit: $(tm.include_limit).")
+println("\nClasses: $(tm.classes_num), clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), LF: $(tm.LF), states_num: $(tm.states_num + 1), include_limit: $(tm.include_limit).")
 println("Input vector size: $(length(x_sample)) bits, density: $(density)%, training dataset size: $(CORPUS_LENGTH).")
 println("Expected average clause literal density: $(round(tm.L / length(x_sample) * 100, digits=2))%. Using literals index: false.")
 println("Running in $(nthreads()) threads. Training over $(EPOCHS) epochs:\n")
@@ -133,6 +133,6 @@ end
 elapsed = Time(0) + Second(floor(Int, all_time))
 average_clause_density = round((literals_sum(tm) / (tm.classes_num * tm.clauses_num * 2)) / length(x_sample) * 100, digits=2)
 println("\n$(EPOCHS) epochs done in $(elapsed).")
-println("Classes: $(tm.classes_num), clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), LF: $(tm.LF), states_num: $(tm.state_max + 1), include_limit: $(tm.include_limit).")
+println("Classes: $(tm.classes_num), clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), LF: $(tm.LF), states_num: $(tm.states_num + 1), include_limit: $(tm.include_limit).")
 println("Input vector size: $(length(x_sample)) bits, density: $(density)%, training dataset size: $(CORPUS_LENGTH).")
 println("Average clause literal density: $(average_clause_density)%. Using literals index: false.\n")

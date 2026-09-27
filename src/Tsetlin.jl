@@ -95,7 +95,7 @@ mutable struct TMClauses{StateType}
     negative_clauses::Union{Matrix{StateType}, Nothing}
     negative_clauses_inverted::Union{Matrix{StateType}, Nothing}
 
-    function TMClauses{StateType}(clause_size::Int64, ta_clauses_num::Int64, include_limit::Int64) where StateType
+    function TMClauses{StateType}(clause_size::Int, ta_clauses_num::Int, include_limit::Int) where StateType
         chunks_size = cld(clause_size, 64)
         chunks_idx_size = cld(chunks_size, 64)
         positive_clauses = fill(StateType(include_limit - 1), clause_size, ta_clauses_num)
@@ -114,6 +114,8 @@ end
 
 
 mutable struct TMClassifier{ClassType, N, TMType, C}
+    const clauses::TMType
+    const classes::Memory{ClassType}
     classes_num::Int64
     clauses_num::Int64
     T::Int64
@@ -123,15 +125,12 @@ mutable struct TMClassifier{ClassType, N, TMType, C}
     LF::Int64
     const clause_size::UInt32
     const include_limit::UInt16
-    const state_min::UInt16
-    const state_max::UInt16
-    const clauses::TMType
-    const classes::Memory{ClassType}
+    const states_num::UInt16
 
-    function TMClassifier(x::TMInput, Y::Vector, clauses_num::Int64, T::Int64, S::Int64, L::Int64, LF::Int64; states_num::Int64=256, include_limit::Int64=128)
-        state_max_available = maximum(typemax.(STATE_TYPES))
+    function TMClassifier(x::TMInput, Y::Vector, clauses_num::Int, T::Int, S::Int, L::Int, LF::Int; states_num::Int=256, include_limit::Int=128)
+        states_num_available = maximum(typemax.(STATE_TYPES)) + 1
         state_max = states_num - 1
-        @assert 2 <= states_num <= state_max_available + 1 "states_num must be between 2 to $(state_max_available + 1)."
+        @assert 2 <= states_num <= states_num_available "states_num must be between 2 to $(states_num_available)."
         @assert 1 <= include_limit <= state_max "include_limit must be between 1 to $(state_max)."
         ClassType = typeof(first(Y))
         clause_size = length(x)
@@ -155,7 +154,7 @@ mutable struct TMClassifier{ClassType, N, TMType, C}
                 clauses[i] = TMClauses{StateType}(clause_size, ta_clauses_num, include_limit)
             end
         end
-        return new{ClassType, N, TMType, ta_clauses_num}(classes_num, clauses_num, T, S, s, L, LF, clause_size, include_limit, 0, state_max, clauses, classes)
+        return new{ClassType, N, TMType, ta_clauses_num}(clauses, classes, classes_num, clauses_num, T, S, s, L, LF, clause_size, include_limit, states_num - 1)
     end
 end
 
@@ -516,7 +515,7 @@ function train!(tm::TMClassifier{ClassType}, x_train::Vector{TMInput}, y_train::
     @assert best_tms_size in 0:2000
     if verbose > 0
         density = round(sum(sum(x) for x in x_train) / (length(x_train[1]) * length(x_train)) * 100, digits=2)
-        println("\nClasses: $(tm.classes_num), clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), LF: $(tm.LF), states_num: $(tm.state_max + 1), include_limit: $(tm.include_limit).")
+        println("\nClasses: $(tm.classes_num), clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), LF: $(tm.LF), states_num: $(tm.states_num + 1), include_limit: $(tm.include_limit).")
         println("Input vector size: $(length(x_train[1])) bits, density: $(density)%, training dataset size: $(length(y_train)), testing dataset size: $(length(y_test)).")
         println("Expected average clause literal density: $(round(tm.L / length(x_train[1]) * 100, digits=2))%. Using literals index: $(index).")
         println("Running in $(nthreads()) threads. Accuracy over $(epochs) epochs:\n")
@@ -544,7 +543,7 @@ function train!(tm::TMClassifier{ClassType}, x_train::Vector{TMInput}, y_train::
         multiplier = ifelse(ClassType == Bool, 1, 2)
         average_clause_density = round((literals_sum(tm) / (tm.classes_num * tm.clauses_num * multiplier)) / length(x_train[1]) * 100, digits=2)
         @printf("\n%s epochs done in %s. Best accuracy: %.2f%%.\n", epochs, elapsed, best_acc * 100)
-        println("Classes: $(tm.classes_num), clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), LF: $(tm.LF), states_num: $(tm.state_max + 1), include_limit: $(tm.include_limit).")
+        println("Classes: $(tm.classes_num), clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), LF: $(tm.LF), states_num: $(tm.states_num + 1), include_limit: $(tm.include_limit).")
         println("Input vector size: $(length(x_train[1])) bits, density: $(density)%, training dataset size: $(length(y_train)), testing dataset size: $(length(y_test)).")
         println("Average clause literal density: $(average_clause_density)%. Using literals index: $(index).\n")
     end
