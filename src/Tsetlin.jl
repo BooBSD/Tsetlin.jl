@@ -113,7 +113,7 @@ mutable struct TMClauses{StateType}
 end
 
 
-mutable struct TMClassifier{ClassType, N, TMType, C}
+mutable struct TMClassifier{ClassType, N, C, TMType}
     const classes::Memory{ClassType}
     const clauses::TMType
     classes_num::Int32
@@ -154,7 +154,7 @@ mutable struct TMClassifier{ClassType, N, TMType, C}
                 clauses[i] = TMClauses{StateType}(clause_size, ta_clauses_num, include_limit)
             end
         end
-        return new{ClassType, N, TMType, ta_clauses_num}(classes, clauses, classes_num, clauses_num, T, S, s, L, LF, clause_size, state_max, include_limit)
+        return new{ClassType, N, ta_clauses_num, TMType}(classes, clauses, classes_num, clauses_num, T, S, s, L, LF, clause_size, state_max, include_limit)
     end
 end
 
@@ -199,7 +199,7 @@ end
 end
 
 
-@inline function vote(tm::TMClassifier{<:Any, <:Any, <:Any, C}, clauses::TMClauses, x::TMInput; index::Bool=false)::Tuple{Int, Int} where C
+@inline function vote(tm::TMClassifier{<:Any, <:Any, C}, clauses::TMClauses, x::TMInput; index::Bool=false)::Tuple{Int, Int} where C
     pos = 0
     neg = 0
     if !index
@@ -271,7 +271,7 @@ end
 end
 
 
-function feedback!(tm::TMClassifier{<:Any, N, <:Any, C}, clauses::TMClauses{StateType}, x::TMInput, clauses1::Matrix{StateType}, clauses_inverted1::Matrix{StateType}, clauses2::Matrix{StateType}, clauses_inverted2::Matrix{StateType}, literals1::Matrix{UInt64}, literals_inverted1::Matrix{UInt64}, literals2::Matrix{UInt64}, literals_inverted2::Matrix{UInt64}, literals1_idx::Matrix{UInt64}, literals2_idx::Matrix{UInt64}, positive::Bool, index::Bool, exclusive_literals::Bool=false) where {N, StateType, C}
+function feedback!(tm::TMClassifier{<:Any, N, C}, clauses::TMClauses{StateType}, x::TMInput, clauses1::Matrix{StateType}, clauses_inverted1::Matrix{StateType}, clauses2::Matrix{StateType}, clauses_inverted2::Matrix{StateType}, literals1::Matrix{UInt64}, literals_inverted1::Matrix{UInt64}, literals2::Matrix{UInt64}, literals_inverted2::Matrix{UInt64}, literals1_idx::Matrix{UInt64}, literals2_idx::Matrix{UInt64}, positive::Bool, index::Bool, exclusive_literals::Bool=false) where {N, C, StateType}
     T = tm.T
     pos, neg = vote(tm, clauses, x, index=index)
     v = clamp(pos - neg, -T, T)
