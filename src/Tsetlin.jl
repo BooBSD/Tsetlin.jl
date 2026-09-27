@@ -247,16 +247,6 @@ end
 end
 
 
-@inline function get_rands()::Tuple{Float32, Float32}
-    rnd = rand(UInt64)
-    r1 = rnd % UInt32
-    r2 = UInt32(rnd >> 32)
-    f1 = Float32(r1 >>> 8) * Float32(0x1p-24)
-    f2 = Float32(r2 >>> 8) * Float32(0x1p-24)
-    return f1, f2
-end
-
-
 @inline function next_clause_jump(inv_log::Float64)::Int
     return 1 + unsafe_trunc(Int, log(1.0 - rand()) * inv_log)
 end
