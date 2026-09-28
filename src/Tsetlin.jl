@@ -467,9 +467,14 @@ function predict(tm::TMClassifier{ClassType}, X::Vector{TMInput}; index::Bool=fa
 end
 
 
-function accuracy(predicted::Vector{T}, Y::Vector{T})::Float64 where T
-    @assert length(predicted) === length(Y)
-    return sum(@inbounds p === y for (p, y) in zip(predicted, Y); init=0) / length(Y)
+@inline function accuracy(predicted::AbstractVector{T}, Y::AbstractVector{T})::Float64 where T
+    n = length(Y)
+    @assert length(predicted) === n
+    correct = 0
+    @inbounds @simd for i in 1:n
+        correct += (predicted[i] === Y[i])
+    end
+    return correct / n
 end
 
 
