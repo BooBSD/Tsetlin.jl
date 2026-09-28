@@ -159,7 +159,7 @@ mutable struct TMClassifier{ClassType, N, C, TMType}
 end
 
 
-@inline function check_clause(tm::TMClassifier{<:Any, N}, x::TMInput, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64}, literals_idx::SubArray{UInt64})::Int where N
+@inline function check_clause(tm::TMClassifier{<:Any, N}, x::TMInput, literals::AbstractVector{UInt64}, literals_inverted::AbstractVector{UInt64}, literals_idx::AbstractVector{UInt64})::Int where N
     LF = tm.LF
     c = 0
     chunks = x.chunks
@@ -184,7 +184,7 @@ end
 end
 
 
-@inline function check_clause(tm::TMClassifier{<:Any, N}, x::TMInput, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64})::Int where N
+@inline function check_clause(tm::TMClassifier{<:Any, N}, x::TMInput, literals::AbstractVector{UInt64}, literals_inverted::AbstractVector{UInt64})::Int where N
     c = 0
     chunks = x.chunks
     @inbounds @simd for n in 1:N
@@ -221,7 +221,7 @@ end
 end
 
 
-@inline function update_index(tm::TMClassifier{<:Any, N}, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64}, literals_idx::SubArray{UInt64}) where N
+@inline function update_index(tm::TMClassifier{<:Any, N}, literals::AbstractVector{UInt64}, literals_inverted::AbstractVector{UInt64}, literals_idx::AbstractVector{UInt64}) where N
     @inbounds for n in 0:((N - 1) >> 6)
         base = n << 6
         idx_mask = zero(UInt64)
@@ -237,7 +237,7 @@ end
 end
 
 
-@inline function include_literals_sum(a::SubArray{UInt64}, b::SubArray{UInt64}, N::Int)::Int
+@inline function include_literals_sum(a::AbstractVector{UInt64}, b::AbstractVector{UInt64}, N::Int)::Int
     c = 0
     @inbounds @simd for n in 1:N
         c += count_ones(a[n] | b[n])
