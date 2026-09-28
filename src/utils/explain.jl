@@ -67,10 +67,10 @@ end
 
 
 function explain(tm::TMClassifier{<:Any, N}, x::TMInput, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64})::ExplainedClause where N
-    matched_literals = BitVector(undef, x.len)
-    matched_literals_inverted = BitVector(undef, x.len)
-    failed_literals = BitVector(undef, x.len)
-    failed_literals_inverted = BitVector(undef, x.len)
+    matched_literals = BitVector(undef, length(x))
+    matched_literals_inverted = BitVector(undef, length(x))
+    failed_literals = BitVector(undef, length(x))
+    failed_literals_inverted = BitVector(undef, length(x))
     c = 0
     @inbounds for i in 1:N
         matched_literals.chunks[i] = x.chunks[i] & literals[i]

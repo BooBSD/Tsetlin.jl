@@ -17,9 +17,8 @@ unzip(a) = (getfield.(a, x) for x in fieldnames(eltype(a)))
 abstract type AbstractTMInput <: AbstractVector{Bool} end
 
 # Mutable struct is up to 10% faster
-mutable struct TMInput <: AbstractTMInput
+mutable struct TMInput{len} <: AbstractTMInput
     const chunks::Memory{UInt64}
-    const len::Int
 
     function TMInput(x::AbstractArray{Bool})
         len = length(x)
@@ -34,28 +33,29 @@ mutable struct TMInput <: AbstractTMInput
             end
             chunks[n] = chunk
         end
-        return new(chunks, len)
+        return new{len}(chunks)
     end
 
     function TMInput(len::Int)
         num_chunks = cld(len, 64)
         chunks = Memory{UInt64}(undef, num_chunks)
         fill!(chunks, zero(UInt64))
-        return new(chunks, len)
+        return new{len}(chunks)
     end
 
     function TMInput(::UndefInitializer, len::Int)
         chunks = Memory{UInt64}(undef, cld(len, 64))
-        return new(chunks, len)
+        return new{len}(chunks)
     end
 
     function TMInput(chunks::AbstractArray{UInt64}, len::Int)
-        return new(chunks, len)
+        return new{len}(chunks)
     end
 end
 
 Base.IndexStyle(::Type{<:TMInput}) = IndexLinear()
-Base.size(x::TMInput)::Tuple{Int64} = (x.len,)
+Base.size(x::TMInput{len}) where {len} = (len,)
+Base.length(x::TMInput{len}) where {len} = len
 Base.sum(x::TMInput)::Int = sum(count_ones, x.chunks)
 @inline function Base.getindex(x::TMInput, i::Int)
     @boundscheck checkbounds(x, i)
@@ -457,7 +457,7 @@ function predict(tm::TMClassifier{ClassType}, x::TMInput; index::Bool=false)::Cl
 end
 
 
-function predict(tm::TMClassifier{ClassType}, X::AbstractVector{TMInput}; index::Bool=false)::Vector{ClassType} where ClassType
+function predict(tm::TMClassifier{ClassType}, X::AbstractVector{<:TMInput}; index::Bool=false)::Vector{ClassType} where ClassType
     predicted::Vector{ClassType} = Vector{ClassType}(undef, length(X))  # Predefine vector for @threads access
     @threads for i in eachindex(X)
         predicted[i] = predict(tm, X[i], index=index)
@@ -501,14 +501,14 @@ function train!(tm::TMClassifier{ClassType}, x::TMInput, y::ClassType; index::Bo
 end
 
 
-function train!(tm::TMClassifier{ClassType}, X::AbstractVector{TMInput}, Y::AbstractVector{ClassType}; shuffle::Bool=true, index::Bool=false, exclusive_literals::Bool=false) where ClassType
+function train!(tm::TMClassifier{ClassType}, X::AbstractVector{<:TMInput}, Y::AbstractVector{ClassType}; shuffle::Bool=true, index::Bool=false, exclusive_literals::Bool=false) where ClassType
     @threads for i in (shuffle ? randperm(length(Y)) : eachindex(Y))
         train!(tm, X[i], Y[i], index=index, exclusive_literals=exclusive_literals)
     end
 end
 
 
-function train!(tm::TMClassifier{ClassType}, x_train::AbstractVector{TMInput}, y_train::AbstractVector{ClassType}, x_test::AbstractVector{TMInput}, y_test::AbstractVector{ClassType}, epochs::Int; shuffle::Bool=true, index::Bool=false, verbose::Int=1, best_tms_size::Int=0, best_tms_compile::Bool=true, exclusive_literals::Bool=false)::Vector{Tuple{TMClassifier, Float64}} where ClassType
+function train!(tm::TMClassifier{ClassType}, x_train::AbstractVector{<:TMInput}, y_train::AbstractVector{ClassType}, x_test::AbstractVector{<:TMInput}, y_test::AbstractVector{ClassType}, epochs::Int; shuffle::Bool=true, index::Bool=false, verbose::Int=1, best_tms_size::Int=0, best_tms_compile::Bool=true, exclusive_literals::Bool=false)::Vector{Tuple{TMClassifier, Float64}} where ClassType
     @assert best_tms_size in 0:2000
     if verbose > 0
         density = round(sum(sum(x) for x in x_train) / (length(x_train[1]) * length(x_train)) * 100, digits=2)
@@ -583,7 +583,7 @@ function load(filepath::AbstractString)
 end
 
 
-function benchmark(tm::TMClassifier{ClassType}, X::AbstractVector{TMInput}, Y::AbstractVector{ClassType}, loops::Int; warmup::Bool=true, index::Bool=false) where ClassType
+function benchmark(tm::TMClassifier{ClassType}, X::AbstractVector{<:TMInput}, Y::AbstractVector{ClassType}, loops::Int; warmup::Bool=true, index::Bool=false) where ClassType
     density = round(sum(sum(x) for x in X) / (length(X[1]) * length(X)) * 100, digits=2)
     multiplier = ifelse(ClassType == Bool, 1, 2)
     average_clause_density = round((literals_sum(tm) / (tm.classes_num * tm.clauses_num * multiplier)) / length(X[1]) * 100, digits=2)
@@ -596,7 +596,7 @@ function benchmark(tm::TMClassifier{ClassType}, X::AbstractVector{TMInput}, Y::A
     prepare_time = @elapsed begin
         # Permutate in random order
         len = length(Y)
-        x_len = X[1].len
+        x_len = length(X[1])
         perm = Vector{Int32}(undef, len * loops)
         i = 0
         @inbounds @fastmath for _ in 1:loops
@@ -606,7 +606,7 @@ function benchmark(tm::TMClassifier{ClassType}, X::AbstractVector{TMInput}, Y::A
             end
         end
         # Multiply X and Y by loops times
-        _X::Vector{TMInput} = Vector{TMInput}(undef, length(perm))
+        _X::Vector{TMInput{x_len}} = Vector{TMInput{x_len}}(undef, length(perm))
         @threads for i in eachindex(_X)
             # This is 3.5x faster than deepcopy()
             _X[i] = TMInput(copy(X[perm[i]].chunks), x_len)
