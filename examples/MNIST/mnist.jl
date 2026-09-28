@@ -26,7 +26,7 @@ y_test = Int8.(y_test)
 
 CLAUSES = 20
 T = 20
-S = 400
+S = 800
 L = 150
 LF = 75
 
