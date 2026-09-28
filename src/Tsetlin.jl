@@ -113,7 +113,7 @@ mutable struct TMClauses{StateType}
 end
 
 
-mutable struct TMClassifier{ClassType, N, C, TMType}
+mutable struct TMClassifier{ClassType, N, C, LF, TMType}
     const classes::Memory{ClassType}
     const clauses::TMType
     classes_num::Int32
@@ -122,7 +122,7 @@ mutable struct TMClassifier{ClassType, N, C, TMType}
     S::Int32
     s::Int32
     L::Int32
-    LF::Int32
+    const LF::Int32
     const clause_size::UInt32
     const state_max::UInt16
     const include_limit::UInt16
@@ -154,13 +154,12 @@ mutable struct TMClassifier{ClassType, N, C, TMType}
                 clauses[i] = TMClauses{StateType}(clause_size, ta_clauses_num, include_limit)
             end
         end
-        return new{ClassType, N, ta_clauses_num, TMType}(classes, clauses, classes_num, clauses_num, T, S, s, L, LF, clause_size, state_max, include_limit)
+        return new{ClassType, N, ta_clauses_num, LF, TMType}(classes, clauses, classes_num, clauses_num, T, S, s, L, LF, clause_size, state_max, include_limit)
     end
 end
 
 
-@inline function check_clause(tm::TMClassifier{<:Any, N}, x::TMInput, literals::AbstractVector{UInt64}, literals_inverted::AbstractVector{UInt64}, literals_idx::AbstractVector{UInt64})::Int where N
-    LF = tm.LF
+@inline function check_clause(tm::TMClassifier{<:Any, N, <:Any, LF}, x::TMInput, literals::AbstractVector{UInt64}, literals_inverted::AbstractVector{UInt64}, literals_idx::AbstractVector{UInt64})::Int where {N, LF}
     c = 0
     chunks = x.chunks
     nidx = cld(N, 64)
@@ -184,7 +183,7 @@ end
 end
 
 
-@inline function check_clause(tm::TMClassifier{<:Any, N}, x::TMInput, literals::AbstractVector{UInt64}, literals_inverted::AbstractVector{UInt64})::Int where N
+@inline function check_clause(tm::TMClassifier{<:Any, N, <:Any, LF}, x::TMInput, literals::AbstractVector{UInt64}, literals_inverted::AbstractVector{UInt64})::Int where {N, LF}
     c = 0
     chunks = x.chunks
     @inbounds @simd for n in 1:N
@@ -195,7 +194,7 @@ end
         val = (((lit ⊻ lit_inv) & chunk) ⊻ lit)
         c += count_ones(val)
     end
-    return max(0, tm.LF - c)
+    return max(0, LF - c)
 end
 
 
