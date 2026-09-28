@@ -127,7 +127,7 @@ mutable struct TMClassifier{ClassType, N, C, TMType}
     const state_max::UInt16
     const include_limit::UInt16
 
-    function TMClassifier(x::TMInput, Y::Vector, clauses_num::Int, T::Int, S::Int, L::Int, LF::Int; states_num::Int=256, include_limit::Int=128)
+    function TMClassifier(x::TMInput, Y::AbstractVector, clauses_num::Int, T::Int, S::Int, L::Int, LF::Int; states_num::Int=256, include_limit::Int=128)
         states_num_available = maximum(typemax.(STATE_TYPES)) + 1
         state_max = states_num - 1
         @assert 2 <= states_num <= states_num_available "states_num must be between 2 to $(states_num_available)."
@@ -458,7 +458,7 @@ function predict(tm::TMClassifier{ClassType}, x::TMInput; index::Bool=false)::Cl
 end
 
 
-function predict(tm::TMClassifier{ClassType}, X::Vector{TMInput}; index::Bool=false)::Vector{ClassType} where ClassType
+function predict(tm::TMClassifier{ClassType}, X::AbstractVector{TMInput}; index::Bool=false)::Vector{ClassType} where ClassType
     predicted::Vector{ClassType} = Vector{ClassType}(undef, length(X))  # Predefine vector for @threads access
     @threads for i in eachindex(X)
         predicted[i] = predict(tm, X[i], index=index)
@@ -502,14 +502,14 @@ function train!(tm::TMClassifier{ClassType}, x::TMInput, y::ClassType; index::Bo
 end
 
 
-function train!(tm::TMClassifier{ClassType}, X::Vector{TMInput}, Y::Vector{ClassType}; shuffle::Bool=true, index::Bool=false, exclusive_literals::Bool=false) where ClassType
+function train!(tm::TMClassifier{ClassType}, X::AbstractVector{TMInput}, Y::AbstractVector{ClassType}; shuffle::Bool=true, index::Bool=false, exclusive_literals::Bool=false) where ClassType
     @threads for i in (shuffle ? randperm(length(Y)) : eachindex(Y))
         train!(tm, X[i], Y[i], index=index, exclusive_literals=exclusive_literals)
     end
 end
 
 
-function train!(tm::TMClassifier{ClassType}, x_train::Vector{TMInput}, y_train::Vector{ClassType}, x_test::Vector{TMInput}, y_test::Vector{ClassType}, epochs::Int; shuffle::Bool=true, index::Bool=false, verbose::Int=1, best_tms_size::Int=0, best_tms_compile::Bool=true, exclusive_literals::Bool=false)::Vector{Tuple{TMClassifier, Float64}} where ClassType
+function train!(tm::TMClassifier{ClassType}, x_train::AbstractVector{TMInput}, y_train::AbstractVector{ClassType}, x_test::AbstractVector{TMInput}, y_test::AbstractVector{ClassType}, epochs::Int; shuffle::Bool=true, index::Bool=false, verbose::Int=1, best_tms_size::Int=0, best_tms_compile::Bool=true, exclusive_literals::Bool=false)::Vector{Tuple{TMClassifier, Float64}} where ClassType
     @assert best_tms_size in 0:2000
     if verbose > 0
         density = round(sum(sum(x) for x in x_train) / (length(x_train[1]) * length(x_train)) * 100, digits=2)
@@ -584,7 +584,7 @@ function load(filepath::AbstractString)
 end
 
 
-function benchmark(tm::TMClassifier{ClassType}, X::Vector{TMInput}, Y::Vector{ClassType}, loops::Int; warmup::Bool=true, index::Bool=false) where ClassType
+function benchmark(tm::TMClassifier{ClassType}, X::AbstractVector{TMInput}, Y::AbstractVector{ClassType}, loops::Int; warmup::Bool=true, index::Bool=false) where ClassType
     density = round(sum(sum(x) for x in X) / (length(X[1]) * length(X)) * 100, digits=2)
     multiplier = ifelse(ClassType == Bool, 1, 2)
     average_clause_density = round((literals_sum(tm) / (tm.classes_num * tm.clauses_num * multiplier)) / length(X[1]) * 100, digits=2)
