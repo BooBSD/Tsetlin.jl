@@ -2,64 +2,60 @@ include("../../src/Tsetlin.jl")
 
 
 using Serialization
-using .Tsetlin: TMClassifier, train!, save, load, benchmark, compile
+using .Tsetlin: TMClassifier, train!
 
 
 X_train, y_train = Serialization.deserialize(joinpath(tempdir(), "CIFAR10_train"))
 X_test, y_test = Serialization.deserialize(joinpath(tempdir(), "CIFAR10_test"))
-TM_PATH = joinpath(tempdir(), "tm.tm")
+input_size = Serialization.deserialize(joinpath(tempdir(), "CIFAR10_input_size"))
 
+const CLAUSES = 20  # (69%+ acc)
+const T = 1600
+const S = 1000
+const L = 4000
+const LF = 4000
 
-CLAUSES = 20  # (69%+ acc)
-T = 1600
-S = 1000
-L = 4000
-LF = 4000
+# const CLAUSES = 20
+# const T = 45
+# const S = 1000
+# const L = 200
+# const LF = 200
 
-# CLAUSES = 20
-# T = 45
-# S = 1000
-# L = 200
-# LF = 200
+# const CLAUSES = 200
+# const T = 316
+# const S = 1000
+# const L = 1000
+# const LF = 1000
 
-# CLAUSES = 200
-# T = 316
-# S = 1000
-# L = 1000
-# LF = 1000
+# const CLAUSES = 200
+# const T = 2500
+# const S = 1000
+# const L = 1000
+# const LF = 1000
 
-# CLAUSES = 200
-# T = 2500
-# S = 1000
-# L = 1000
-# LF = 1000
+# const CLAUSES = 2000
+# const T = 10000  # 2200
+# const S = 1000   # 1000
+# const L = 1000   # 200
+# const LF = 1000  # 200
 
-# CLAUSES = 2000
-# T = 10000  # 2200
-# S = 1000   # 1000
-# L = 1000   # 200
-# LF = 1000  # 200
+# const CLAUSES = 2000
+# const T = 2200
+# const S = 1000
+# const L = 200
+# const LF = 200
 
-# CLAUSES = 2000
-# T = 2200
-# S = 1000
-# L = 200
-# LF = 200
+# const CLAUSES = 2000
+# const T = 4000
+# const S = 1000
+# const L = 250
+# const LF = 250
 
-# CLAUSES = 2000
-# T = 4000
-# S = 1000
-# L = 250
-# LF = 250
-
-EPOCHS = 200
+const STATES_NUM = 256
+const INCLUDE_LIMIT = 240
+const INDEX = true
+const EPOCHS = 1000
 
 # Training the TM model
-tm = TMClassifier(X_train[1], y_train, CLAUSES, T, S, L, LF, states_num=256, include_limit=240)
-train!(tm, X_train, y_train, X_test, y_test, EPOCHS, index=true)
-
-save(tm, TM_PATH)
-tm = load(TM_PATH)
-tmc = compile(tm)
-
-benchmark(tmc, X_test, y_test, 10 * 2, warmup=true, index=false)
+tm = TMClassifier(input_size, y_train, CLAUSES, T, S, L, LF, states_num=STATES_NUM, include_limit=INCLUDE_LIMIT)
+train!(tm, X_train, y_train, X_test, y_test, EPOCHS, index=INDEX)

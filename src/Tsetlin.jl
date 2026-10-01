@@ -1,6 +1,6 @@
 module Tsetlin
 
-export TMInput, TMClassifier, train!, predict, accuracy, save, load
+export TMClassifier, InputVector, InputBatch, train!, predict, accuracy, save, load
 
 using Dates
 using Random
@@ -14,73 +14,35 @@ Base.exit_on_sigint(false)
 unzip(a) = (getfield.(a, x) for x in fieldnames(eltype(a)))
 
 
-abstract type AbstractTMInput <: AbstractVector{Bool} end
-
-# Mutable struct is up to 10% faster
-mutable struct TMInput{len} <: AbstractTMInput
-    const chunks::Memory{UInt64}
-
-    function TMInput(x::AbstractArray{Bool})
-        len = length(x)
-        chunks = Memory{UInt64}(undef, cld(len, 64))
-        idx = firstindex(x)
-        @inbounds for n in eachindex(chunks)
-            chunk = zero(UInt64)
-            for i in 0:63
-                idx > len && break
-                chunk |= UInt64(x[idx]) << i
-                idx += 1
-            end
-            chunks[n] = chunk
-        end
-        return new{len}(chunks)
-    end
-
-    function TMInput(len::Int)
-        num_chunks = cld(len, 64)
-        chunks = Memory{UInt64}(undef, num_chunks)
-        fill!(chunks, zero(UInt64))
-        return new{len}(chunks)
-    end
-
-    function TMInput(::UndefInitializer, len::Int)
-        chunks = Memory{UInt64}(undef, cld(len, 64))
-        return new{len}(chunks)
-    end
-
-    function TMInput(chunks::AbstractArray{UInt64}, len::Int)
-        return new{len}(chunks)
-    end
-end
-
-Base.IndexStyle(::Type{<:TMInput}) = IndexLinear()
-Base.size(x::TMInput{len}) where {len} = (len,)
-Base.length(x::TMInput{len}) where {len} = len
-Base.sum(x::TMInput)::Int = sum(count_ones, x.chunks)
-@inline function Base.getindex(x::TMInput, i::Int)
-    @boundscheck checkbounds(x, i)
-    chunk_idx = ((i - 1) >>> 6) + 1
-    bit_idx = (i - 1) & 63
-    @inbounds return ((x.chunks[chunk_idx] >> bit_idx) & 1) == 1
-end
-@inline function Base.setindex!(x::TMInput, v::Bool, i::Int)
-    @boundscheck checkbounds(x, i)
-    chunk_idx = ((i - 1) >>> 6) + 1
-    bit_idx = (i - 1) & 63
-    mask = 1 << bit_idx
-    @inbounds begin
-        c = x.chunks[chunk_idx]
-        x.chunks[chunk_idx] = ifelse(v, c | mask, c & ~mask)
-    end
-    return x
-end
-@inline Base.setindex!(x::TMInput, v, i::Int) = setindex!(x, convert(Bool, v), i)
-
-
-booleanize(x, ts...) = TMInput([val > t for t in ts for val in vec(x)])
-
-
 const STATE_TYPES = (UInt8, UInt16)
+const InputVector = Memory{UInt64}
+const InputBatch = Matrix{UInt64}
+
+@inline InputVector(dim::Int)::InputVector = InputVector(undef, cld(dim, 64))
+
+@inline function InputVector(bv::BitVector; copy::Bool=true)::InputVector
+    if copy
+        return InputVector(bv.chunks)
+    else
+        return getfield(bv.chunks, :ref).mem
+    end
+end
+
+@inline InputBatch(dim::Int, n::Int)::InputBatch = InputBatch(undef, cld(dim, 64), n)
+
+function InputBatch(iv::AbstractVector{InputVector})::InputBatch
+    ncols = length(iv)
+    nrows = isempty(iv) ? 0 : length(first(iv))
+    @assert all(m -> length(m) == nrows, iv)
+    batch = InputBatch(undef, nrows, ncols)
+    for i in eachindex(iv)
+        copyto!(view(batch, :, i), iv[i])
+    end
+    return batch
+end
+
+
+booleanize(x, ts...)::InputVector = InputVector(BitVector(val > t for t in ts for val in vec(x)), copy=true)  # Yes, copy=true!
 
 
 mutable struct TMClauses{StateType}
@@ -127,15 +89,14 @@ mutable struct TMClassifier{ClassType, N, C, LF, TMType}
     const state_max::UInt16
     const include_limit::UInt16
 
-    function TMClassifier(x::TMInput, Y::AbstractVector, clauses_num::Int, T::Int, S::Int, L::Int, LF::Int; states_num::Int=256, include_limit::Int=128)
+    function TMClassifier(clause_size, Y::AbstractVector, clauses_num::Int, T::Int, S::Int, L::Int, LF::Int; states_num::Int=256, include_limit::Int=128)
         states_num_available = maximum(typemax.(STATE_TYPES)) + 1
         state_max = states_num - 1
         @assert 2 <= states_num <= states_num_available "states_num must be between 2 to $(states_num_available)."
         @assert 1 <= include_limit <= state_max "include_limit must be between 1 to $(state_max)."
         ClassType = typeof(first(Y))
-        clause_size = length(x)
-        N = length(x.chunks)
-        s = round(Int, length(x) / S)
+        N = cld(clause_size, 64)
+        s = round(Int, clause_size / S)
         StateType = STATE_TYPES[findfirst(T -> state_max <= typemax(T), STATE_TYPES)]
         if ClassType == Bool
             TMType = TMClauses{StateType}
@@ -159,9 +120,8 @@ mutable struct TMClassifier{ClassType, N, C, LF, TMType}
 end
 
 
-@inline function check_clause(tm::TMClassifier{<:Any, N, <:Any, LF}, x::TMInput, literals::AbstractVector{UInt64}, literals_inverted::AbstractVector{UInt64}, literals_idx::AbstractVector{UInt64})::Int where {N, LF}
+@inline function check_clause(tm::TMClassifier{<:Any, N, <:Any, LF}, x::AbstractVector{UInt64}, literals::AbstractVector{UInt64}, literals_inverted::AbstractVector{UInt64}, literals_idx::AbstractVector{UInt64})::Int where {N, LF}
     c = 0
-    chunks = x.chunks
     nidx = cld(N, 64)
     @inbounds for i in 1:nidx
         (c >= LF) && return 0  # helps for huge inputs
@@ -173,7 +133,7 @@ end
         # @simd for n in min_n:max_n  # Potentially faster on very sparse inputs
         @simd for n in 0:max_n  # Faster on a MNIST
             id = base + n
-            chunk = chunks[id]
+            chunk = x[id]
             # val = (~chunk & literals[id]) | (chunk & literals_inverted[id])
             val = (((literals[id] ⊻ literals_inverted[id]) & chunk) ⊻ literals[id])
             c += count_ones(val)
@@ -183,11 +143,10 @@ end
 end
 
 
-@inline function check_clause(tm::TMClassifier{<:Any, N, <:Any, LF}, x::TMInput, literals::AbstractVector{UInt64}, literals_inverted::AbstractVector{UInt64})::Int where {N, LF}
+@inline function check_clause(tm::TMClassifier{<:Any, N, <:Any, LF}, x::AbstractVector{UInt64}, literals::AbstractVector{UInt64}, literals_inverted::AbstractVector{UInt64})::Int where {N, LF}
     c = 0
-    chunks = x.chunks
     @inbounds @simd for n in 1:N
-        chunk = chunks[n]
+        chunk = x[n]
         lit = literals[n]
         lit_inv = literals_inverted[n]
         # val = (~chunk & lit) | (chunk & lit_inv)
@@ -198,22 +157,22 @@ end
 end
 
 
-@inline function vote(tm::TMClassifier{<:Any, <:Any, C}, clauses::TMClauses, x::TMInput; index::Bool=false)::Tuple{Int, Int} where C
+@inline function vote(tm::TMClassifier{<:Any, <:Any, C}, clauses::TMClauses, x::AbstractVector{UInt64}; index::Bool=false)::Tuple{Int, Int} where C
     pos = 0
     neg = 0
     if !index
         @inbounds for i in 1:C
-            pos += check_clause(tm, x, @view(clauses.positive_included_literals[:, i]), @view(clauses.positive_included_literals_inverted[:, i]))
+            pos += check_clause(tm, x, view(clauses.positive_included_literals, :, i), view(clauses.positive_included_literals_inverted, :, i))
         end
         @inbounds for i in 1:C
-            neg += check_clause(tm, x, @view(clauses.negative_included_literals[:, i]), @view(clauses.negative_included_literals_inverted[:, i]))
+            neg += check_clause(tm, x, view(clauses.negative_included_literals, :, i), view(clauses.negative_included_literals_inverted, :, i))
         end
     else
         @inbounds for i in 1:C
-            pos += check_clause(tm, x, @view(clauses.positive_included_literals[:, i]), @view(clauses.positive_included_literals_inverted[:, i]), @view(clauses.positive_included_literals_idx[:, i]))
+            pos += check_clause(tm, x, view(clauses.positive_included_literals, :, i), view(clauses.positive_included_literals_inverted, :, i), view(clauses.positive_included_literals_idx, :, i))
         end
         @inbounds for i in 1:C
-            neg += check_clause(tm, x, @view(clauses.negative_included_literals[:, i]), @view(clauses.negative_included_literals_inverted[:, i]), @view(clauses.negative_included_literals_idx[:, i]))
+            neg += check_clause(tm, x, view(clauses.negative_included_literals, :, i), view(clauses.negative_included_literals_inverted, :, i), view(clauses.negative_included_literals_idx, :, i))
         end
     end
     return pos, neg
@@ -270,7 +229,7 @@ end
 end
 
 
-function feedback!(tm::TMClassifier{<:Any, N, C}, clauses::TMClauses{StateType}, x::TMInput, clauses1::Matrix{StateType}, clauses_inverted1::Matrix{StateType}, clauses2::Matrix{StateType}, clauses_inverted2::Matrix{StateType}, literals1::Matrix{UInt64}, literals_inverted1::Matrix{UInt64}, literals2::Matrix{UInt64}, literals_inverted2::Matrix{UInt64}, literals1_idx::Matrix{UInt64}, literals2_idx::Matrix{UInt64}, positive::Bool, index::Bool, exclusive_literals::Bool=false) where {N, C, StateType}
+function feedback!(tm::TMClassifier{<:Any, N, C}, clauses::TMClauses{StateType}, x::AbstractVector{UInt64}, clauses1::Matrix{StateType}, clauses_inverted1::Matrix{StateType}, clauses2::Matrix{StateType}, clauses_inverted2::Matrix{StateType}, literals1::Matrix{UInt64}, literals_inverted1::Matrix{UInt64}, literals2::Matrix{UInt64}, literals_inverted2::Matrix{UInt64}, literals1_idx::Matrix{UInt64}, literals2_idx::Matrix{UInt64}, positive::Bool, index::Bool, exclusive_literals::Bool=false) where {N, C, StateType}
     T = tm.T
     pos, neg = vote(tm, clauses, x, index=index)
     v = clamp(pos - neg, -T, T)
@@ -283,16 +242,15 @@ function feedback!(tm::TMClassifier{<:Any, N, C}, clauses::TMClauses{StateType},
     include_limit = StateType(tm.include_limit)
     clause_size = Int(tm.clause_size)
     last_bit = 63 - ((N << 6) - clause_size)
-    chunks = x.chunks
 
     # Feedback 1
     j = next_clause_jump(inv_log)
     @inbounds while j <= C
-        c = @view(clauses1[:, j])
-        ci = @view(clauses_inverted1[:, j])
-        l = @view(literals1[:, j])
-        li = @view(literals_inverted1[:, j])
-        l_idx = @view(literals1_idx[:, j])
+        c = view(clauses1, :, j)
+        ci = view(clauses_inverted1, :, j)
+        l = view(literals1, :, j)
+        li = view(literals_inverted1, :, j)
+        l_idx = view(literals1_idx, :, j)
         j += next_clause_jump(inv_log)
         if (!index ? check_clause(tm, x, l, li) : check_clause(tm, x, l, li, l_idx)) > 0
             if include_literals_sum(l, li, N) < tm.L
@@ -306,7 +264,7 @@ function feedback!(tm::TMClassifier{<:Any, N, C}, clauses::TMClauses{StateType},
                 # end
                 # Two loops are a bit faster than one.
                 for n in 1:N
-                    std_mask = chunks[n]
+                    std_mask = x[n]
                     (std_mask == zero(UInt64)) && continue
                     base = n * 64 - 63
                     stop_bit = ifelse(n == N, last_bit, 63)
@@ -320,7 +278,7 @@ function feedback!(tm::TMClassifier{<:Any, N, C}, clauses::TMClauses{StateType},
                     l[n] = ifelse(exclusive_literals, l_mask & ~li[n], l_mask)  # contradiction fix
                 end
                 for n in 1:N
-                    inv_mask = ~chunks[n]
+                    inv_mask = ~x[n]
                     (inv_mask == zero(UInt64)) && continue
                     base = n * 64 - 63
                     stop_bit = ifelse(n == N, last_bit, 63)
@@ -346,8 +304,8 @@ function feedback!(tm::TMClassifier{<:Any, N, C}, clauses::TMClauses{StateType},
             # end
             # We do not need to update the include-literal masks because this feedback logic only decrements excluded literals.
             for n in 1:N
-                std_mask = ~chunks[n] & ~l[n]
-                inv_mask = chunks[n] & ~li[n]
+                std_mask = ~x[n] & ~l[n]
+                inv_mask = x[n] & ~li[n]
                 ((std_mask | inv_mask) == zero(UInt64)) && continue
                 base = n * 64 - 63
                 stop_bit = ifelse(n == N, last_bit, 63)
@@ -384,11 +342,11 @@ function feedback!(tm::TMClassifier{<:Any, N, C}, clauses::TMClauses{StateType},
     # Feedback 2
     j = next_clause_jump(inv_log)
     @inbounds while j <= C
-        c = @view(clauses2[:, j])
-        ci = @view(clauses_inverted2[:, j])
-        l = @view(literals2[:, j])
-        li = @view(literals_inverted2[:, j])
-        l_idx = @view(literals2_idx[:, j])
+        c = view(clauses2, :, j)
+        ci = view(clauses_inverted2, :, j)
+        l = view(literals2, :, j)
+        li = view(literals_inverted2, :, j)
+        l_idx = view(literals2_idx, :, j)
         j += next_clause_jump(inv_log)
         (!index ? check_clause(tm, x, l, li) : check_clause(tm, x, l, li, l_idx)) > 0 || continue
         # for i = 1:tm.clause_size
@@ -401,7 +359,7 @@ function feedback!(tm::TMClassifier{<:Any, N, C}, clauses::TMClauses{StateType},
         # end
         # Two loops are a bit faster than one.
         for n in 1:N
-            std_mask = ~chunks[n] & ~l[n]
+            std_mask = ~x[n] & ~l[n]
             (std_mask == zero(UInt64)) && continue
             base = n * 64 - 63
             stop_bit = ifelse(n == N, last_bit, 63)
@@ -415,7 +373,7 @@ function feedback!(tm::TMClassifier{<:Any, N, C}, clauses::TMClauses{StateType},
             l[n] = ifelse(exclusive_literals, l_mask & ~li[n], l_mask)  # contradiction fix
         end
         for n in 1:N
-            inv_mask = chunks[n] & ~li[n]
+            inv_mask = x[n] & ~li[n]
             (inv_mask == zero(UInt64)) && continue
             base = n * 64 - 63
             stop_bit = ifelse(n == N, last_bit, 63)
@@ -433,13 +391,13 @@ function feedback!(tm::TMClassifier{<:Any, N, C}, clauses::TMClauses{StateType},
 end
 
 
-function predict(tm::TMClassifier{ClassType}, x::TMInput; index::Bool=false)::ClassType where ClassType <: Bool
+function predict(tm::TMClassifier{ClassType}, x::AbstractVector{UInt64}; index::Bool=false)::ClassType where ClassType <: Bool
     pos, neg = vote(tm, tm.clauses, x, index=index)
     return pos > neg
 end
 
 
-function predict(tm::TMClassifier{ClassType}, x::TMInput; index::Bool=false)::ClassType where ClassType
+function predict(tm::TMClassifier{ClassType}, x::AbstractVector{UInt64}; index::Bool=false)::ClassType where ClassType
     best_vote = typemin(Int64)
     best_cls = typemin(ClassType)
     classes = tm.classes
@@ -457,10 +415,19 @@ function predict(tm::TMClassifier{ClassType}, x::TMInput; index::Bool=false)::Cl
 end
 
 
-function predict(tm::TMClassifier{ClassType}, X::AbstractVector{<:TMInput}; index::Bool=false)::Vector{ClassType} where ClassType
+function predict(tm::TMClassifier{ClassType}, X::AbstractVector{InputVector}; index::Bool=false)::Vector{ClassType} where ClassType
     predicted::Vector{ClassType} = Vector{ClassType}(undef, length(X))  # Predefine vector for @threads access
     @threads for i in eachindex(X)
         predicted[i] = predict(tm, X[i], index=index)
+    end
+    return predicted
+end
+
+function predict(tm::TMClassifier{ClassType}, X::InputBatch; index::Bool=false)::Vector{ClassType} where ClassType
+    _, X_len = size(X)
+    predicted::Vector{ClassType} = Vector{ClassType}(undef, X_len)  # Predefine vector for @threads access
+    @threads for i in 1:X_len
+        predicted[i] = predict(tm, view(X, :, i), index=index)
     end
     return predicted
 end
@@ -477,7 +444,7 @@ end
 end
 
 
-function train!(tm::TMClassifier{ClassType}, x::TMInput, y::ClassType; index::Bool=false, exclusive_literals::Bool=false) where ClassType <: Bool
+function train!(tm::TMClassifier{ClassType}, x::AbstractVector{UInt64}, y::ClassType; index::Bool=false, exclusive_literals::Bool=false) where ClassType <: Bool
     clauses = tm.clauses
     if y == true
         feedback!(tm, clauses, x, clauses.positive_clauses, clauses.positive_clauses_inverted, clauses.negative_clauses, clauses.negative_clauses_inverted, clauses.positive_included_literals, clauses.positive_included_literals_inverted, clauses.negative_included_literals, clauses.negative_included_literals_inverted, clauses.positive_included_literals_idx, clauses.negative_included_literals_idx, true, index, exclusive_literals)
@@ -487,7 +454,7 @@ function train!(tm::TMClassifier{ClassType}, x::TMInput, y::ClassType; index::Bo
 end
 
 
-function train!(tm::TMClassifier{ClassType}, x::TMInput, y::ClassType; index::Bool=false, exclusive_literals::Bool=false) where ClassType
+function train!(tm::TMClassifier{ClassType}, x::AbstractVector{UInt64}, y::ClassType; index::Bool=false, exclusive_literals::Bool=false) where ClassType
     classes = tm.classes
     tm_clauses = tm.clauses
     @inbounds for i in eachindex(tm_clauses)
@@ -501,20 +468,20 @@ function train!(tm::TMClassifier{ClassType}, x::TMInput, y::ClassType; index::Bo
 end
 
 
-function train!(tm::TMClassifier{ClassType}, X::AbstractVector{<:TMInput}, Y::AbstractVector{ClassType}; shuffle::Bool=true, index::Bool=false, exclusive_literals::Bool=false) where ClassType
+function train!(tm::TMClassifier{ClassType}, X::InputBatch, Y::AbstractVector{ClassType}; shuffle::Bool=true, index::Bool=false, exclusive_literals::Bool=false) where ClassType
     @threads for i in (shuffle ? randperm(length(Y)) : eachindex(Y))
-        train!(tm, X[i], Y[i], index=index, exclusive_literals=exclusive_literals)
+        train!(tm, view(X, :, i), Y[i], index=index, exclusive_literals=exclusive_literals)
     end
 end
 
 
-function train!(tm::TMClassifier{ClassType}, x_train::AbstractVector{<:TMInput}, y_train::AbstractVector{ClassType}, x_test::AbstractVector{<:TMInput}, y_test::AbstractVector{ClassType}, epochs::Int; shuffle::Bool=true, index::Bool=false, verbose::Int=1, best_tms_size::Int=0, best_tms_compile::Bool=true, exclusive_literals::Bool=false)::Vector{Tuple{TMClassifier, Float64}} where ClassType
+function train!(tm::TMClassifier{ClassType}, x_train::InputBatch, y_train::AbstractVector{ClassType}, x_test::InputBatch, y_test::AbstractVector{ClassType}, epochs::Int; shuffle::Bool=true, index::Bool=false, verbose::Int=1, best_tms_size::Int=0, best_tms_compile::Bool=true, exclusive_literals::Bool=false)::Vector{Tuple{TMClassifier, Float64}} where ClassType
     @assert best_tms_size in 0:2000
     if verbose > 0
-        density = round(sum(sum(x) for x in x_train) / (length(x_train[1]) * length(x_train)) * 100, digits=2)
+        density = round(sum(sum(count_ones, x) for x in x_train) / (tm.clause_size * length(y_train)) * 100, digits=2)
         println("\nClasses: $(tm.classes_num), clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), LF: $(tm.LF), state range: 0-$(tm.state_max), include limit: $(tm.include_limit).")
-        println("Input vector size: $(length(x_train[1])) bits, density: $(density)%, training dataset size: $(length(y_train)), testing dataset size: $(length(y_test)).")
-        println("Expected average clause literal density: $(round(tm.L / length(x_train[1]) * 100, digits=2))%. Using literals index: $(index).")
+        println("Input vector size: $(tm.clause_size) bits, density: $(density)%, training dataset size: $(length(y_train)), testing dataset size: $(length(y_test)).")
+        println("Expected average clause literal density: $(round(tm.L / tm.clause_size * 100, digits=2))%. Using literals index: $(index).")
         println("Running in $(nthreads()) threads. Accuracy over $(epochs) epochs:\n")
     end
     best_acc::Float64 = 0.0
@@ -538,10 +505,10 @@ function train!(tm::TMClassifier{ClassType}, x_train::AbstractVector{<:TMInput},
     if verbose > 0
         elapsed = Time(0) + Second(round(Int, all_time))
         multiplier = ifelse(ClassType == Bool, 1, 2)
-        average_clause_density = round((literals_sum(tm) / (tm.classes_num * tm.clauses_num * multiplier)) / length(x_train[1]) * 100, digits=2)
+        average_clause_density = round((literals_sum(tm) / (tm.classes_num * tm.clauses_num * multiplier)) / tm.clause_size * 100, digits=2)
         @printf("\n%s epochs done in %s. Best accuracy: %.2f%%.\n", epochs, elapsed, best_acc * 100)
         println("Classes: $(tm.classes_num), clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), LF: $(tm.LF), state range: 0-$(tm.state_max), include limit: $(tm.include_limit).")
-        println("Input vector size: $(length(x_train[1])) bits, density: $(density)%, training dataset size: $(length(y_train)), testing dataset size: $(length(y_test)).")
+        println("Input vector size: $(tm.clause_size) bits, density: $(density)%, training dataset size: $(length(y_train)), testing dataset size: $(length(y_test)).")
         println("Average clause literal density: $(average_clause_density)%. Using literals index: $(index).\n")
     end
     return best_tms
@@ -583,37 +550,29 @@ function load(filepath::AbstractString)
 end
 
 
-function benchmark(tm::TMClassifier{ClassType}, X::AbstractVector{<:TMInput}, Y::AbstractVector{ClassType}, loops::Int; warmup::Bool=true, index::Bool=false) where ClassType
-    density = round(sum(sum(x) for x in X) / (length(X[1]) * length(X)) * 100, digits=2)
+function benchmark(tm::TMClassifier{ClassType}, X::InputBatch, Y::AbstractVector{ClassType}, loops::Int; warmup::Bool=true, index::Bool=false) where ClassType
+    density = round(sum(sum(count_ones, x) for x in X) / (tm.clause_size * length(Y)) * 100, digits=2)
     multiplier = ifelse(ClassType == Bool, 1, 2)
-    average_clause_density = round((literals_sum(tm) / (tm.classes_num * tm.clauses_num * multiplier)) / length(X[1]) * 100, digits=2)
+    average_clause_density = round((literals_sum(tm) / (tm.classes_num * tm.clauses_num * multiplier)) / tm.clause_size * 100, digits=2)
     @printf("CPU: %s\n", Sys.cpu_info()[1].model)
     @printf("Running in %s threads.\n", nthreads())
-    println("Input vector size: $(length(X[1])) bits. Density: $(density)%")
+    println("Input vector size: $(tm.clause_size) bits. Density: $(density)%")
     println("Average clause literal density: $(average_clause_density)%. Using literals index: $(index).")
     print("Preparing input data for benchmark... ")
     GC.gc()
     prepare_time = @elapsed begin
-        # Permutate in random order
-        len = length(Y)
-        x_len = length(X[1])
-        perm = Vector{Int32}(undef, len * loops)
-        i = 0
-        @inbounds @fastmath for _ in 1:loops
-            @inbounds @fastmath for r in Random.shuffle(UnitRange{Int32}(1:len))
-                i += 1
-                perm[i] = r
-            end
-        end
-        # Multiply X and Y by loops times
-        _X::Vector{TMInput{x_len}} = Vector{TMInput{x_len}}(undef, length(perm))
-        @threads for i in eachindex(_X)
-            # This is 3.5x faster than deepcopy()
-            _X[i] = TMInput(copy(X[perm[i]].chunks), x_len)
-            # _X[i] = deepcopy(X[perm[i]])
+        m, n = size(X)
+        N = n * loops
+        p = randperm(N)
+        _X = InputBatch(undef, m, N)
+        _Y = Vector{ClassType}(undef, N)
+        @threads for j in 1:N
+            src = mod1(p[j], n)
+            copyto!(_X, (j - 1) * m + 1, X, (src - 1) * m + 1, m)
+            _Y[j] = Y[src]
         end
         X = _X
-        Y = Y[perm]
+        Y = _Y
     end
     @printf("Done. Elapsed %.3f seconds.\n", prepare_time)
     GC.gc()
@@ -638,7 +597,7 @@ function benchmark(tm::TMClassifier{ClassType}, X::AbstractVector{<:TMInput}, Y:
     @printf("Throughput: %.3f GB/s.\n", X_size / 1024^3 / bench_time)
     @printf("Input data size: %.3f GB.\n", X_size / 1024^3)
     multiplier = (ClassType == Bool) ? 2 : length(tm.clauses)
-    @printf("Parameters during training: %s.\n", tm.clauses_num * multiplier * length(X[1]) * 2)
+    @printf("Parameters during training: %s.\n", tm.clauses_num * multiplier * tm.clause_size * 2)
     @printf("Parameters after training and compilation: %s.\n", literals_sum(tm))
     @printf("Accuracy: %.2f%%.\n\n", accuracy(predicted, Y) * 100)
 end

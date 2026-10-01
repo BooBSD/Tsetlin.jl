@@ -4,28 +4,25 @@ import Pkg
 [Base.find_package(p) === nothing && Pkg.add(p) for p in ["MLDatasets"]]
 
 using MLDatasets: MNIST, FashionMNIST
-using .Tsetlin: TMInput, TMClassifier, train!, predict, accuracy, save, load, unzip, booleanize, benchmark, compile
+using .Tsetlin: TMClassifier, InputBatch, train!, save, load, unzip, booleanize, benchmark, compile
 
 
-x_train, y_train = unzip([MNIST(:train)...])
-x_test, y_test = unzip([MNIST(:test)...])
-# x_train, y_train = unzip([FashionMNIST(:train)...])
-# x_test, y_test = unzip([FashionMNIST(:test)...])
+DATASET = MNIST
+# DATASET = FashionMNIST
 
-# 1-bit booleanization
-x_train = [booleanize(x, 0.2) for x in x_train]
-x_test = [booleanize(x, 0.2) for x in x_test]
-# 4-bit booleanization
-# x_train = [booleanize(x, 0, 0.25, 0.5, 0.75) for x in x_train]
-# x_test = [booleanize(x, 0, 0.25, 0.5, 0.75) for x in x_test]
+MODEL_PATH = joinpath(tempdir(), "tm.tm")
 
-# Convert y_train and y_test to the Int8 type to save memory
-y_train = Int8.(y_train)
-y_test = Int8.(y_test)
+THRESHOLDS = (0.2)                  # 1-bit booleanization
+# THRESHOLDS = (0, 0.25, 0.5, 0.75)   # 4-bit booleanization
 
+STATES_NUM = 256
+INCLUDE_LIMIT = 128
+INDEX = false
+SHUFFLE = false
+EPOCHS = 1000
 
 CLAUSES = 20
-T = 20
+T = 16
 S = 800
 L = 150
 LF = 75
@@ -54,19 +51,27 @@ LF = 75
 # L = 10
 # LF = 5
 
-EPOCHS = 1000
+x_train, y_train = unzip([DATASET(:train)...])
+x_test, y_test = unzip([DATASET(:test)...])
 
-MODEL_PATH = joinpath(tempdir(), "tm.tm")
+input_size = length(first(x_train)) * length(THRESHOLDS)
+
+x_train = InputBatch([booleanize(x, THRESHOLDS...) for x in x_train])
+x_test = InputBatch([booleanize(x, THRESHOLDS...) for x in x_test])
+
+# Convert y_train and y_test to the Int8 type to save memory
+y_train = Int8.(y_train)
+y_test = Int8.(y_test)
 
 # Training the TM model
-tm = TMClassifier(x_train[1], y_train, CLAUSES, T, S, L, LF, states_num=256, include_limit=128)
-train!(tm, x_train, y_train, x_test, y_test, EPOCHS, index=false, shuffle=false)
-
-save(tm, MODEL_PATH)
-tm = load(MODEL_PATH)
+tm = TMClassifier(input_size, y_train, CLAUSES, T, S, L, LF, states_num=STATES_NUM, include_limit=INCLUDE_LIMIT)
+train!(tm, x_train, y_train, x_test, y_test, EPOCHS, index=INDEX, shuffle=SHUFFLE)
 
 # Compiling model
 tmc = compile(tm)
 
+save(tmc, MODEL_PATH)
+tmc = load(MODEL_PATH)
+
 # Benchmark
-benchmark(tmc, x_test, y_test, 1000 * 10, warmup=true, index=false)
+benchmark(tmc, x_test, y_test, 1000 * 10, index=INDEX)

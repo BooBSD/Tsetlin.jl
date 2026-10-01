@@ -8,7 +8,7 @@ using Random
 using Serialization
 using Base.Threads
 using MLDatasets: MNIST, FashionMNIST
-using .Tsetlin: TMInput, TMClassifier, train!, unzip
+using .Tsetlin: TMClassifier, InputVector, InputBatch, train!, unzip
 
 
 const HV_PATH = joinpath(tempdir(), "hvectors_fmnist")
@@ -87,19 +87,19 @@ else
         end
         serialize(HV_PATH, hvectors)
 
-        X_train = Vector{TMInput}(undef, length(x_train))
-        X_test = Vector{TMInput}(undef, length(x_test))
+        X_train = InputBatch(HV_DIMENSIONS, length(x_train))
+        X_test = InputBatch(HV_DIMENSIONS, length(x_test))
         accs = [zeros(BUNDLE_ACC_TYPE, HV_DIMENSIONS) for _ in 1:n_default]
         scratchs = [BitVector(undef, HV_DIMENSIONS) for _ in 1:n_default]
         @threads for i in eachindex(x_train)
             tid = Threads.threadid() - n_interact
             hv = bundle!(accs[tid], scratchs[tid], x_train[i], hvectors)
-            X_train[i] = TMInput(hv.chunks, hv.len)
+            copyto!(view(X_train, :, i), InputVector(hv, copy=false))
         end
         @threads for i in eachindex(x_test)
             tid = Threads.threadid() - n_interact
             hv = bundle!(accs[tid], scratchs[tid], x_test[i], hvectors)
-            X_test[i] = TMInput(hv.chunks, hv.len)
+            copyto!(view(X_test, :, i), InputVector(hv, copy=false))
         end
     end
     # Convert y_train and y_test to the Int8 type to save memory
@@ -109,7 +109,6 @@ else
     println("Done. Elapsed in $(Time(0) + Second(floor(Int, prepare_time))).")
 end
 
-
 # Training the TM model
-tm = TMClassifier(X_train[1], y_train, CLAUSES, T, S, L, LF, states_num=STATES_NUM, include_limit=INCLUDE_LIMIT)
-train!(tm, X_train, y_train, X_test, y_test, EPOCHS, exclusive_literals=false)
+tm = TMClassifier(HV_DIMENSIONS, y_train, CLAUSES, T, S, L, LF, states_num=STATES_NUM, include_limit=INCLUDE_LIMIT)
+train!(tm, X_train, y_train, X_test, y_test, EPOCHS)

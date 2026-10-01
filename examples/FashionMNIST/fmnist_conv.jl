@@ -8,7 +8,7 @@ using Base.Threads
 using Serialization
 using Statistics
 using MLDatasets: FashionMNIST
-using .Tsetlin: TMInput, TMClassifier, train!, unzip, predict
+using .Tsetlin: TMClassifier, InputVector, InputBatch, train!, unzip
 
 
 x_train, y_train = unzip([FashionMNIST(:train)...])
@@ -17,53 +17,53 @@ x_test, y_test = unzip([FashionMNIST(:test)...])
 print("Preparing input data... ")
 
 # Convolution kernels
-Kx3 = [-1 0 1; -2 0 2; -1 0 1] * one(Float32)
-#Kx5 = [-2 -1 0 1 2; -3 -2 0 2 3; -4 -3 0 3 4; -3 -2 0 2 3; -2 -1 0 1 2] * one(Float32)
-Kx7 = [-3 -2 -1 0 1 2 3; -4 -3 -2 0 2 3 4; -5 -4 -3 0 3 4 5; -6 -5 -4 0 4 5 6; -5 -4 -3 0 3 4 5; -4 -3 -2 0 2 3 4; -3 -2 -1 0 1 2 3] * one(Float32)
+const Kx3 = [-1 0 1; -2 0 2; -1 0 1] * one(Float32)
+# const Kx5 = [-2 -1 0 1 2; -3 -2 0 2 3; -4 -3 0 3 4; -3 -2 0 2 3; -2 -1 0 1 2] * one(Float32)
+const Kx7 = [-3 -2 -1 0 1 2 3; -4 -3 -2 0 2 3 4; -5 -4 -3 0 3 4 5; -6 -5 -4 0 4 5 6; -5 -4 -3 0 3 4 5; -4 -3 -2 0 2 3 4; -3 -2 -1 0 1 2 3] * one(Float32)
 
-#Kx3 = [0 1 2; -1 0 1; -2 -1 0] * one(Float32)
-Kx5 = [0 1 2 3 4; -1 0 2 3 3; -2 -2 0 2 2; -3 -3 -2 0 1; -4 -3 -2 -1 0] * one(Float32)
-#Kx7 = [0 1 2 3 4 5 6; -1 0 2 3 4 5 5; -2 -2 0 3 4 4 4; -3 -3 -3 0 3 3 3; -4 -4 -4 -3 0 2 2; -5 -5 -4 -3 -2 0 1; -6 -5 -4 -3 -2 -1 0] * one(Float32)
+# const Kx3 = [0 1 2; -1 0 1; -2 -1 0] * one(Float32)
+const Kx5 = [0 1 2 3 4; -1 0 2 3 3; -2 -2 0 2 2; -3 -3 -2 0 1; -4 -3 -2 -1 0] * one(Float32)
+# const Kx7 = [0 1 2 3 4 5 6; -1 0 2 3 4 5 5; -2 -2 0 3 4 4 4; -3 -3 -3 0 3 3 3; -4 -4 -4 -3 0 2 2; -5 -5 -4 -3 -2 0 1; -6 -5 -4 -3 -2 -1 0] * one(Float32)
 
-Kx9 = [-1 -1 -1; 2 2 2; -1 -1 -1] * one(Float32)
+const Kx9 = [-1 -1 -1; 2 2 2; -1 -1 -1] * one(Float32)
 
 
-Ky3 = rotl90(Kx3)
-Ky5 = rotl90(Kx5)
-Ky7 = rotl90(Kx7)
-Ky9 = rotl90(Kx9)
+const Ky3 = rotl90(Kx3)
+const Ky5 = rotl90(Kx5)
+const Ky7 = rotl90(Kx7)
+const Ky9 = rotl90(Kx9)
 
-Kp3 = 1  # Padding 1
-Kp5 = 2  # Padding 2
-Kp7 = 3  # Padding 3
-Kp9 = 1  # Padding 1
+const Kp3 = 1  # Padding 1
+const Kp5 = 2  # Padding 2
+const Kp7 = 3  # Padding 3
+const Kp9 = 1  # Padding 1
 
-x_train_conv_orient_x3 = [fastconv(x, Kx3)[1+Kp3:end-Kp3, 1+Kp3:end-Kp3] for x in x_train]
-x_train_conv_orient_y3 = [fastconv(x, Ky3)[1+Kp3:end-Kp3, 1+Kp3:end-Kp3] for x in x_train]
+const x_train_conv_orient_x3 = [fastconv(x, Kx3)[1+Kp3:end-Kp3, 1+Kp3:end-Kp3] for x in x_train]
+const x_train_conv_orient_y3 = [fastconv(x, Ky3)[1+Kp3:end-Kp3, 1+Kp3:end-Kp3] for x in x_train]
 
-x_test_conv_orient_x3 = [fastconv(x, Kx3)[1+Kp3:end-Kp3, 1+Kp3:end-Kp3] for x in x_test]
-x_test_conv_orient_y3 = [fastconv(x, Ky3)[1+Kp3:end-Kp3, 1+Kp3:end-Kp3] for x in x_test]
+const x_test_conv_orient_x3 = [fastconv(x, Kx3)[1+Kp3:end-Kp3, 1+Kp3:end-Kp3] for x in x_test]
+const x_test_conv_orient_y3 = [fastconv(x, Ky3)[1+Kp3:end-Kp3, 1+Kp3:end-Kp3] for x in x_test]
 
-x_train_conv_orient_x5 = [fastconv(x, Kx5)[1+Kp5:end-Kp5, 1+Kp5:end-Kp5] for x in x_train]
-x_train_conv_orient_y5 = [fastconv(x, Ky5)[1+Kp5:end-Kp5, 1+Kp5:end-Kp5] for x in x_train]
+const x_train_conv_orient_x5 = [fastconv(x, Kx5)[1+Kp5:end-Kp5, 1+Kp5:end-Kp5] for x in x_train]
+const x_train_conv_orient_y5 = [fastconv(x, Ky5)[1+Kp5:end-Kp5, 1+Kp5:end-Kp5] for x in x_train]
 
-x_test_conv_orient_x5 = [fastconv(x, Kx5)[1+Kp5:end-Kp5, 1+Kp5:end-Kp5] for x in x_test]
-x_test_conv_orient_y5 = [fastconv(x, Ky5)[1+Kp5:end-Kp5, 1+Kp5:end-Kp5] for x in x_test]
+const x_test_conv_orient_x5 = [fastconv(x, Kx5)[1+Kp5:end-Kp5, 1+Kp5:end-Kp5] for x in x_test]
+const x_test_conv_orient_y5 = [fastconv(x, Ky5)[1+Kp5:end-Kp5, 1+Kp5:end-Kp5] for x in x_test]
 
-x_train_conv_orient_x7 = [fastconv(x, Kx7)[1+Kp7:end-Kp7, 1+Kp7:end-Kp7] for x in x_train]
-x_train_conv_orient_y7 = [fastconv(x, Ky7)[1+Kp7:end-Kp7, 1+Kp7:end-Kp7] for x in x_train]
+const x_train_conv_orient_x7 = [fastconv(x, Kx7)[1+Kp7:end-Kp7, 1+Kp7:end-Kp7] for x in x_train]
+const x_train_conv_orient_y7 = [fastconv(x, Ky7)[1+Kp7:end-Kp7, 1+Kp7:end-Kp7] for x in x_train]
 
-x_test_conv_orient_x7 = [fastconv(x, Kx7)[1+Kp7:end-Kp7, 1+Kp7:end-Kp7] for x in x_test]
-x_test_conv_orient_y7 = [fastconv(x, Ky7)[1+Kp7:end-Kp7, 1+Kp7:end-Kp7] for x in x_test]
+const x_test_conv_orient_x7 = [fastconv(x, Kx7)[1+Kp7:end-Kp7, 1+Kp7:end-Kp7] for x in x_test]
+const x_test_conv_orient_y7 = [fastconv(x, Ky7)[1+Kp7:end-Kp7, 1+Kp7:end-Kp7] for x in x_test]
 
-x_train_conv_orient_x9 = [fastconv(x, Kx9)[1+Kp9:end-Kp9, 1+Kp9:end-Kp9] for x in x_train]
-x_train_conv_orient_y9 = [fastconv(x, Ky9)[1+Kp9:end-Kp9, 1+Kp9:end-Kp9] for x in x_train]
+const x_train_conv_orient_x9 = [fastconv(x, Kx9)[1+Kp9:end-Kp9, 1+Kp9:end-Kp9] for x in x_train]
+const x_train_conv_orient_y9 = [fastconv(x, Ky9)[1+Kp9:end-Kp9, 1+Kp9:end-Kp9] for x in x_train]
 
-x_test_conv_orient_x9 = [fastconv(x, Kx9)[1+Kp9:end-Kp9, 1+Kp9:end-Kp9] for x in x_test]
-x_test_conv_orient_y9 = [fastconv(x, Ky9)[1+Kp9:end-Kp9, 1+Kp9:end-Kp9] for x in x_test]
+const x_test_conv_orient_x9 = [fastconv(x, Kx9)[1+Kp9:end-Kp9, 1+Kp9:end-Kp9] for x in x_test]
+const x_test_conv_orient_y9 = [fastconv(x, Ky9)[1+Kp9:end-Kp9, 1+Kp9:end-Kp9] for x in x_test]
 
 # Booleanization
-function bools(raw, x3, y3, x5, y5, x7, y7, x9, y9)
+function bools(raw, x3, y3, x5, y5, x7, y7, x9, y9)::BitVector
     raw_hist_25::Float64 = quantile([x for x in raw if x > 0], 0.25)
     raw_hist_50::Float64 = quantile([x for x in raw if x > 0], 0.50)
     raw_hist_75::Float64= quantile([x for x in raw if x > 0], 0.75)
@@ -140,7 +140,7 @@ function bools(raw, x3, y3, x5, y5, x7, y7, x9, y9)
     y9_hist_neg_50::Float64 = quantile([x for x in y9 if x < 0], 1 - 0.50)
     y9_hist_neg_75::Float64 = quantile([x for x in y9 if x < 0], 1 - 0.75)
 
-    return TMInput([
+    return BitVector(vec([
         # Raw pixels
         [x > 0 for x in raw];
         [x > raw_hist_25 for x in raw];
@@ -230,18 +230,31 @@ function bools(raw, x3, y3, x5, y5, x7, y7, x9, y9)
         [x < y9_hist_neg_34 for x in y9];
         [x < y9_hist_neg_50 for x in y9];
         [x < y9_hist_neg_75 for x in y9];
-    ])
+    ]))
 end
 
+const input_size = bools(
+    x_train[1],
+    x_train_conv_orient_x3[1],
+    x_train_conv_orient_y3[1],
+    x_train_conv_orient_x5[1],
+    x_train_conv_orient_y5[1],
+    x_train_conv_orient_x7[1],
+    x_train_conv_orient_y7[1],
+    x_train_conv_orient_x9[1],
+    x_train_conv_orient_y9[1],
+).len
 
-X_train = Vector{TMInput}(undef, length(x_train))
+X_train = InputBatch(input_size, length(x_train))
 @threads for i in eachindex(x_train)
-    X_train[i] = bools(x_train[i], x_train_conv_orient_x3[i], x_train_conv_orient_y3[i], x_train_conv_orient_x5[i], x_train_conv_orient_y5[i], x_train_conv_orient_x7[i], x_train_conv_orient_y7[i], x_train_conv_orient_x9[i], x_train_conv_orient_y9[i])
+    bv = bools(x_train[i], x_train_conv_orient_x3[i], x_train_conv_orient_y3[i], x_train_conv_orient_x5[i], x_train_conv_orient_y5[i], x_train_conv_orient_x7[i], x_train_conv_orient_y7[i], x_train_conv_orient_x9[i], x_train_conv_orient_y9[i])
+    copyto!(view(X_train, :, i), InputVector(bv, copy=false))
 end
 
-X_test = Vector{TMInput}(undef, length(x_test))
+X_test = InputBatch(input_size, length(x_test))
 @threads for i in eachindex(x_test)
-    X_test[i] = bools(x_test[i], x_test_conv_orient_x3[i], x_test_conv_orient_y3[i], x_test_conv_orient_x5[i], x_test_conv_orient_y5[i], x_test_conv_orient_x7[i], x_test_conv_orient_y7[i], x_test_conv_orient_x9[i], x_test_conv_orient_y9[i])
+    bv = bools(x_test[i], x_test_conv_orient_x3[i], x_test_conv_orient_y3[i], x_test_conv_orient_x5[i], x_test_conv_orient_y5[i], x_test_conv_orient_x7[i], x_test_conv_orient_y7[i], x_test_conv_orient_x9[i], x_test_conv_orient_y9[i])
+    copyto!(view(X_test, :, i), InputVector(bv, copy=false))
 end
 
 y_train = Int8.(y_train)
@@ -249,20 +262,22 @@ y_test = Int8.(y_test)
 
 println("Done.")
 
-# CLAUSES = 2  # Best accuracy: 92.53% after 713 epochs
-# T = 80
-# S = 1000
-# L = 1200
-# LF = 1200
+# const CLAUSES = 2  # Best accuracy: 92.53% after 713 epochs
+# const T = 80
+# const S = 1000
+# const L = 1200
+# const LF = 1200
 
-CLAUSES = 20  # Best accuracy: 93.59% after 857 epochs
-T = 100
-S = 700
-L = 200
-LF = 200
+const CLAUSES = 20  # Best accuracy: 93.59% after 857 epochs
+const T = 100
+const S = 700
+const L = 200
+const LF = 200
 
-EPOCHS = 1000
+const STATES_NUM = 256
+const INCLUDE_LIMIT = 240
+const EPOCHS = 1000
 
 # Training the TM model
-tm = TMClassifier(X_train[1], y_train, CLAUSES, T, S, L, LF, states_num=256, include_limit=230)
-train!(tm, X_train, y_train, X_test, y_test, EPOCHS, index=false)
+tm = TMClassifier(input_size, y_train, CLAUSES, T, S, L, LF, states_num=STATES_NUM, include_limit=INCLUDE_LIMIT)
+train!(tm, X_train, y_train, X_test, y_test, EPOCHS)

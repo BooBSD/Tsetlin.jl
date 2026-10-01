@@ -3,7 +3,7 @@ include("config.jl")
 include("HDC.jl")
 
 using Serialization
-using .Tsetlin: TMInput, TMClassifier, predict, load
+using .Tsetlin: TMClassifier, InputVector, predict, load
 
 
 hvectors = deserialize(HV_PATH)
@@ -22,7 +22,7 @@ for n in 1:TOKENS_GENERATE
         context = @view(context[rand(max(end - CONTEXT_SIZE + 1, 1):end):end])
     end
     hv = gen_context_hvector!(acc, local_scratch, local_scratch2, context, hvectors; noise=TEMPERATURE_NOISE)
-    push!(prompt_vector, predict(tm, TMInput(hv.chunks.ref.mem, hv.len), index=SPARSE_INDEX))  # hv.chunks.ref.mem !!!
+    push!(prompt_vector, predict(tm, InputVector(hv, copy=false), index=SPARSE_INDEX))
 
     print(Char(prompt_vector[n + length(prompt)]))
 end

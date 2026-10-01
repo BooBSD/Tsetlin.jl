@@ -9,7 +9,7 @@ using Serialization
 using Base.Threads
 using Printf: @printf
 using MLDatasets: CIFAR10
-using .Tsetlin: TMInput, TMClassifier, train!, unzip, vote, accuracy, literals_sum
+using .Tsetlin: TMClassifier, InputVector, train!, unzip, vote, accuracy, literals_sum
 
 
 const HV_PATH = joinpath(tempdir(), "hvectors_cifar")
@@ -74,12 +74,12 @@ function bundle(
 end
 
 
-@inline function mix_target!(result::TMInput, x::BitVector, target::BitVector)
+@inline function mix_target!(result::InputVector, x::BitVector, target::BitVector)
     @inbounds @simd for i in 1:length(x.chunks)
         # XOR algo
-        result.chunks[i] = x.chunks[i] ⊻ target.chunks[i]
+        result[i] = x.chunks[i] ⊻ target.chunks[i]
         # Mix algo
-        # result.chunks[i] = ((x.chunks[i] & ~R_mask.chunks[i]) | (target.chunks[i] & R_mask.chunks[i]))
+        # result[i] = ((x.chunks[i] & ~R_mask.chunks[i]) | (target.chunks[i] & R_mask.chunks[i]))
     end
 end
 
@@ -142,18 +142,18 @@ end
 
 
 function main()
-    x_sample = TMInput(HV_DIMENSIONS)
+    x_sample = InputVector(HV_DIMENSIONS)
     mix_target!(x_sample, X_train[1], first(values(hv_targets)))
-    tm = TMClassifier(x_sample, [true, false], CLAUSES, T, S, L, LF, states_num=STATES_NUM, include_limit=INCLUDE_LIMIT)
-    density = round(sum(x_sample) / length(x_sample) * 100, digits=2)
+    tm = TMClassifier(HV_DIMENSIONS, [true, false], CLAUSES, T, S, L, LF, states_num=STATES_NUM, include_limit=INCLUDE_LIMIT)
+    density = round(sum(count_ones, x_sample) / HV_DIMENSIONS * 100, digits=2)
     println("\nClasses: $(tm.classes_num), clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), LF: $(tm.LF), state range: 0-$(tm.state_max), include limit: $(tm.include_limit).")
-    println("Input vector size: $(length(x_sample)) bits, density: $(density)%, training dataset size: $(length(X_train)).")
-    println("Expected average clause literal density: $(round(tm.L / length(x_sample) * 100, digits=2))%. Using literals index: false.")
+    println("Input vector size: $(HV_DIMENSIONS) bits, density: $(density)%, training dataset size: $(length(X_train)).")
+    println("Expected average clause literal density: $(round(tm.L / HV_DIMENSIONS * 100, digits=2))%. Using literals index: false.")
     println("Running in $(nthreads()) threads. Training over $(EPOCHS) epochs:\n")
 
     n_default = Threads.nthreads(:default)
     n_interact = Threads.nthreads(:interactive)
-    results = [TMInput(undef, HV_DIMENSIONS) for _ in 1:n_default]
+    results = [InputVector(HV_DIMENSIONS) for _ in 1:n_default]
     best_acc = 0.0
     all_time = @elapsed begin
         @inbounds for e in 1:EPOCHS
@@ -164,16 +164,16 @@ function main()
                     tid = Threads.threadid() - n_interact
                     res = results[tid]
                     mix_target!(res, X, hv_targets[y])
-                    train!(tm, res, true, exclusive_literals=false)
+                    train!(tm, res, true)
                     if RANDOM_NEGATIVE_SAMPLE
                         neg_idx = get_negative_idx(y_train, y)
                         mix_target!(res, X, hv_targets[y_train[neg_idx]])
-                        train!(tm, res, false, exclusive_literals=false)
+                        train!(tm, res, false)
                     else
                         @inbounds for (cls, hv_target) in hv_targets
                             if cls != y
                                 mix_target!(res, X, hv_targets[cls])
-                                train!(tm, res, false, exclusive_literals=false)
+                                train!(tm, res, false)
                             end
                         end
                     end
@@ -205,10 +205,10 @@ function main()
         end
     end
     elapsed = Time(0) + Second(floor(Int, all_time))
-    average_clause_density = round((literals_sum(tm) / (tm.classes_num * tm.clauses_num * 2)) / length(x_sample) * 100, digits=2)
+    average_clause_density = round((literals_sum(tm) / (tm.classes_num * tm.clauses_num * 2)) / HV_DIMENSIONS * 100, digits=2)
     println("\n$(EPOCHS) epochs done in $(elapsed).")
     println("Classes: $(tm.classes_num), clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), LF: $(tm.LF), state range: 0-$(tm.state_max), include limit: $(tm.include_limit).")
-    println("Input vector size: $(length(x_sample)) bits, density: $(density)%, training dataset size: $(length(X_train)).")
+    println("Input vector size: $(HV_DIMENSIONS) bits, density: $(density)%, training dataset size: $(length(X_train)).")
     println("Average clause literal density: $(average_clause_density)%. Using literals index: false.\n")
 end
 

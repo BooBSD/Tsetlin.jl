@@ -88,7 +88,7 @@ Importing the necessary functions and the MNIST dataset:
 
 ```julia
 using MLDatasets: MNIST
-using .Tsetlin: TMInput, TMClassifier, train!, predict, accuracy, save, load, unzip, booleanize, compile, benchmark
+using .Tsetlin: TMClassifier, InputBatch, train!, predict, accuracy, save, load, unzip, booleanize, compile, benchmark
 
 x_train, y_train = unzip([MNIST(:train)...])
 x_test, y_test = unzip([MNIST(:test)...])
@@ -97,8 +97,11 @@ x_test, y_test = unzip([MNIST(:test)...])
 Booleanizing input data (2 bits per pixel):
 
 ```julia
-x_train = [booleanize(x, 0, 0.5) for x in x_train]
-x_test = [booleanize(x, 0, 0.5) for x in x_test]
+THRESHOLDS = (0, 0.5)
+input_size = length(first(x_train)) * length(THRESHOLDS)
+
+x_train = InputBatch([booleanize(x, THRESHOLDS...) for x in x_train])
+x_test = InputBatch([booleanize(x, THRESHOLDS...) for x in x_test])
 ```
 
 ### Hyperparameters
@@ -120,7 +123,7 @@ EPOCHS  = 1000 # Number of training epochs
 Train the model over 1000 epochs and save the compiled model to disk:
 
 ```julia
-tm = TMClassifier(x_train[1], y_train, CLAUSES, T, S, L, LF, states_num=256, include_limit=240)
+tm = TMClassifier(input_size, y_train, CLAUSES, T, S, L, LF, states_num=256, include_limit=240)
 train!(tm, x_train, y_train, x_test, y_test, EPOCHS, shuffle=true, index=false)
 save(compile(tm), "/tmp/tm_last.tm")
 ```

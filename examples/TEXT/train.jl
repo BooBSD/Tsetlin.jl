@@ -7,7 +7,7 @@ using Dates
 using Random
 using Base.Threads
 using Serialization
-using .Tsetlin: TMInput, TMClassifier, train!, save, load, compile, literals_sum
+using .Tsetlin: TMClassifier, InputVector, InputBatch, train!, save, load, compile, literals_sum
 
 
 isfile(CORPUS_PATH) || download(CORPUS_URL, CORPUS_PATH)
@@ -65,14 +65,14 @@ else
     n_default = Threads.nthreads(:default)
     n_interact = Threads.nthreads(:interactive)
     prepare_time = @elapsed begin
-        hvs = Vector{TMInput}(undef, n)
+        hvs = InputBatch(HV_DIMENSIONS, n)
         vlocal_acc = [zeros(BUNDLE_ACC_TYPE, HV_DIMENSIONS) for _ in 1:n_default]
         vlocal_scratch = [BitVector(undef, HV_DIMENSIONS) for _ in 1:n_default]
         vlocal_scratch2 = [BitVector(undef, HV_DIMENSIONS) for _ in 1:n_default]
         @threads for start in 1:n
             tid = Threads.threadid() - n_interact
             hv = gen_context_hvector!(vlocal_acc[tid], vlocal_scratch[tid], vlocal_scratch2[tid], @view(CORPUS[start:start + CONTEXT_SIZE - 1]), hvectors)
-            hvs[start] = TMInput(hv.chunks, hv.len)
+            copyto!(view(hvs, :, start), InputVector(hv, copy=false))
         end
     end
     println("Done. Elapsed in $(Time(0) + Second(floor(Int, prepare_time))).")
@@ -83,15 +83,15 @@ local_acc = zeros(BUNDLE_ACC_TYPE, HV_DIMENSIONS)
 local_scratch = BitVector(undef, HV_DIMENSIONS)
 local_scratch2 = BitVector(undef, HV_DIMENSIONS)
 hv_sample = gen_context_hvector!(local_acc, local_scratch, local_scratch2, @view(CORPUS[1:CONTEXT_SIZE]), hvectors)
-x_sample = TMInput(hv_sample.chunks, hv_sample.len)
+x_sample = InputVector(hv_sample)
 y_samples = collect(keys(hvectors))
-tm = TMClassifier(x_sample, y_samples, CLAUSES, T, S, L, LF, states_num=STATES_NUM, include_limit=INCLUDE_LIMIT)
+tm = TMClassifier(HV_DIMENSIONS, y_samples, CLAUSES, T, S, L, LF, states_num=STATES_NUM, include_limit=INCLUDE_LIMIT)
 save(compile(tm), TM_PATH)  # Save empty model for sample()
 
-density = round(sum(x_sample) / length(x_sample) * 100, digits=2)
+density = round(sum(count_ones, x_sample) / HV_DIMENSIONS * 100, digits=2)
 println("\nClasses: $(tm.classes_num), clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), LF: $(tm.LF), state range: 0-$(tm.state_max), include limit: $(tm.include_limit).")
 println("Input vector size: $(length(x_sample)) bits, density: $(density)%, training dataset size: $(CORPUS_LENGTH).")
-println("Expected average clause literal density: $(round(tm.L / length(x_sample) * 100, digits=2))%. Using literals index: false.")
+println("Expected average clause literal density: $(round(tm.L / HV_DIMENSIONS * 100, digits=2))%. Using literals index: false.")
 println("Running in $(nthreads()) threads. Training over $(EPOCHS) epochs:\n")
 all_time = @elapsed begin
     for epoch in 1:EPOCHS
@@ -108,9 +108,9 @@ all_time = @elapsed begin
                     if RANDOMLY_REDUCE_CONTEXT_SIZE
                         context = @view(context[rand(max(end - CONTEXT_SIZE + 1, 1):end):end])
                         hv = gen_context_hvector!(local_acc, local_scratch, local_scratch2, context, hvectors)
-                        x = TMInput(hv.chunks, hv.len)
+                        x = InputVector(hv, copy=false)
                     else
-                        x = hvs[start]
+                        x = view(hvs, :, start)
                     end
                     y = CORPUS[finish + 1]
                     @inbounds for _ in 1:get_stochastic_updates(tokens_probs[y])
@@ -131,7 +131,7 @@ all_time = @elapsed begin
     end
 end
 elapsed = Time(0) + Second(floor(Int, all_time))
-average_clause_density = round((literals_sum(tm) / (tm.classes_num * tm.clauses_num * 2)) / length(x_sample) * 100, digits=2)
+average_clause_density = round((literals_sum(tm) / (tm.classes_num * tm.clauses_num * 2)) / HV_DIMENSIONS * 100, digits=2)
 println("\n$(EPOCHS) epochs done in $(elapsed).")
 println("Classes: $(tm.classes_num), clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), LF: $(tm.LF), state range: 0-$(tm.state_max), include limit: $(tm.include_limit).")
 println("Input vector size: $(length(x_sample)) bits, density: $(density)%, training dataset size: $(CORPUS_LENGTH).")

@@ -3,7 +3,7 @@ include("../Tsetlin.jl")
 export explain
 
 using Base.Threads
-using .Tsetlin: TMInput, TMClassifier, TMClauses
+using .Tsetlin: TMClassifier, TMClauses, InputVector
 
 
 struct ExplainedLiteralSum
@@ -32,7 +32,7 @@ end
 @inline function explain(literals::Matrix{UInt64}, clause_size::UInt32)::Vector{Int16}
     res = zeros(Int16, clause_size)
     bv = BitVector(undef, clause_size)
-    @inbounds for lits in eachcol(literals)
+    for lits in eachcol(literals)
         copyto!(bv.chunks, lits)
         @simd for i in 1:clause_size
             res[i] += bv[i]
@@ -59,24 +59,24 @@ end
 
 function explain(tm::TMClassifier{ClassType})::Dict{ClassType, ExplainedLiteralSum} where ClassType
     res::Dict{ClassType, ExplainedLiteralSum} = Dict()
-    @inbounds for (cls, ta) in zip(tm.classes, tm.clauses)
+    for (cls, ta) in zip(tm.classes, tm.clauses)
         res[cls] = explain(tm, ta)
     end
     return res
 end
 
 
-function explain(tm::TMClassifier{<:Any, N}, x::TMInput, literals::SubArray{UInt64}, literals_inverted::SubArray{UInt64})::ExplainedClause where N
-    matched_literals = BitVector(undef, length(x))
-    matched_literals_inverted = BitVector(undef, length(x))
-    failed_literals = BitVector(undef, length(x))
-    failed_literals_inverted = BitVector(undef, length(x))
+function explain(tm::TMClassifier{<:Any, N}, x::InputVector, literals::AbstractVector{UInt64}, literals_inverted::AbstractVector{UInt64})::ExplainedClause where N
+    matched_literals = BitVector(undef, tm.clause_size)
+    matched_literals_inverted = BitVector(undef, tm.clause_size)
+    failed_literals = BitVector(undef, tm.clause_size)
+    failed_literals_inverted = BitVector(undef, tm.clause_size)
     c = 0
-    @inbounds for i in 1:N
-        matched_literals.chunks[i] = x.chunks[i] & literals[i]
-        matched_literals_inverted.chunks[i] = ~x.chunks[i] & literals_inverted[i]
-        failed_literals.chunks[i] = ~x.chunks[i] & literals[i]
-        failed_literals_inverted.chunks[i] = x.chunks[i] & literals_inverted[i]
+    for i in 1:N
+        matched_literals.chunks[i] = x[i] & literals[i]
+        matched_literals_inverted.chunks[i] = ~x[i] & literals_inverted[i]
+        failed_literals.chunks[i] = ~x[i] & literals[i]
+        failed_literals_inverted.chunks[i] = x[i] & literals_inverted[i]
         c += count_ones(failed_literals.chunks[i] | failed_literals_inverted.chunks[i])
     end
     vote = max(0, tm.LF - c)
@@ -90,12 +90,12 @@ function explain(tm::TMClassifier{<:Any, N}, x::TMInput, literals::SubArray{UInt
 end
 
 
-function explain(tm::TMClassifier{<:Any, <:Any, <:Any, C}, clauses::TMClauses, x::TMInput)::Tuple{ExplainedClauses, ExplainedClauses} where C
+function explain(tm::TMClassifier{<:Any, <:Any, C}, clauses::TMClauses, x::InputVector)::Tuple{ExplainedClauses, ExplainedClauses} where C
     pos = Vector{ExplainedClause}(undef, C)
     neg = Vector{ExplainedClause}(undef, C)
-    @inbounds for i in 1:C
-        pos[i] = explain(tm, x, @view(clauses.positive_included_literals[:, i]), @view(clauses.positive_included_literals_inverted[:, i]))
-        neg[i] = explain(tm, x, @view(clauses.negative_included_literals[:, i]), @view(clauses.negative_included_literals_inverted[:, i]))
+    for i in 1:C
+        pos[i] = explain(tm, x, view(clauses.positive_included_literals, :, i), view(clauses.positive_included_literals_inverted, :, i))
+        neg[i] = explain(tm, x, view(clauses.negative_included_literals, :, i), view(clauses.negative_included_literals_inverted, :, i))
     end
     return (
         ExplainedClauses(pos, sum(c.vote for c in pos)),
@@ -104,7 +104,7 @@ function explain(tm::TMClassifier{<:Any, <:Any, <:Any, C}, clauses::TMClauses, x
 end
 
 
-function explain(tm::TMClassifier{ClassType}, x::TMInput)::Dict{ClassType, ExplainedClauses} where ClassType <: Bool
+function explain(tm::TMClassifier{ClassType}, x::InputVector)::Dict{ClassType, ExplainedClauses} where ClassType <: Bool
     pos, neg = explain(tm, tm.clauses, x)
     return Dict(
         true => pos,
@@ -113,9 +113,9 @@ function explain(tm::TMClassifier{ClassType}, x::TMInput)::Dict{ClassType, Expla
 end
 
 
-function explain(tm::TMClassifier{ClassType}, x::TMInput)::Dict{ClassType, Dict{Bool, ExplainedClauses}} where ClassType
+function explain(tm::TMClassifier{ClassType}, x::InputVector)::Dict{ClassType, Dict{Bool, ExplainedClauses}} where ClassType
     res::Dict{ClassType, Dict{Bool, ExplainedClauses}} = Dict()
-    @inbounds for (cls, ta) in zip(tm.classes, tm.clauses)
+    for (cls, ta) in zip(tm.classes, tm.clauses)
         pos, neg = explain(tm, ta, x)
         res[cls] = Dict(
             true => pos,
@@ -126,7 +126,7 @@ function explain(tm::TMClassifier{ClassType}, x::TMInput)::Dict{ClassType, Dict{
 end
 
 
-function explain(tm::TMClassifier{ClassType}, X::Vector{TMInput})::Vector{Dict{ClassType, Dict{Bool, ExplainedClauses}}} where ClassType
+function explain(tm::TMClassifier{ClassType}, X::Vector{InputVector})::Vector{Dict{ClassType, Dict{Bool, ExplainedClauses}}} where ClassType
     res = Vector{Dict{ClassType, Dict{Bool, ExplainedClauses}}}(undef, length(X))
     @threads for i in eachindex(X)
         res[i] = explain(tm, X[i])
