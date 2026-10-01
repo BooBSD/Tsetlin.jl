@@ -576,7 +576,7 @@ function benchmark(tm::TMClassifier{ClassType}, X::InputBatch, Y::AbstractVector
     end
     @printf("Done. Elapsed %.3f seconds.\n", prepare_time)
     GC.gc()
-    X_size = Base.summarysize(X[1]) * length(X)
+    X_size = Base.summarysize(X)
     if warmup
         print("Warm-up started... ")
         warmup_time = @elapsed begin
