@@ -27,7 +27,7 @@ function compute_weights(n::Int, alpha::T)::Vector{T} where T<:AbstractFloat
     @inbounds for k in 1:n
         val = 1.0 / (k ^ alpha)
         normalization_sum += val
-        weights[k] = val 
+        weights[k] = val
     end
     inv_norm = 1.0 / normalization_sum
     @inbounds @simd for k in 1:n
@@ -41,7 +41,7 @@ function compute_weights_exp(n::Int, lambda::T)::Vector{T} where T<:AbstractFloa
     normalization_sum = zero(T)
     weights = Vector{T}(undef, n)
     decay_factor = exp(-lambda)
-    val = decay_factor 
+    val = decay_factor
     @inbounds for k in 1:n
         normalization_sum += val
         weights[k] = val
@@ -90,8 +90,14 @@ function gen_context_hvector!(
             w_neg = -weight
             hv = gen_ngram(hvectors, @view(context_window[i-NGRAM+1:i]), scratch, scratch2)
             circshift!(scratch, hv, dist_from_end)
-            @simd for j in eachindex(scratch)
-                acc[j] += ifelse(scratch[j], w_pos, w_neg)
+            chunks = scratch.chunks
+            for c in eachindex(chunks)
+                base = c * 64 - 63
+                @simd for j in 0:63
+                    jj = base + j
+                    pos = ((chunks[c] >> j) & 1) == 1
+                    acc[jj] += ifelse(pos, w_pos, w_neg)
+                end
             end
         end
         n += 1
