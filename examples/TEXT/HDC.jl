@@ -71,6 +71,7 @@ function gen_context_hvector!(
     n = 1
     @inbounds for i in 1:len
         if n > NGRAM - 1
+            token = context_window[i]
             dist_from_end = len - i + 1
             weight = weights[dist_from_end]
             w_pos = weight
