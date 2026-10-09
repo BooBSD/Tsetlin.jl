@@ -52,10 +52,14 @@ for t in tokens
 end
 
 hvectors::Dict{UInt8, BitVector} = Dict()
-for hv in tokens
-    hvectors[hv] = random_hv(HV_DIMENSIONS, round(Int, HV_DIMENSIONS * (1 - 0.5^(1/NGRAM))))
+shift_hvectors = Memory{BitVector}(undef, CONTEXT_SIZE)
+for t in tokens
+    hvectors[t] = bitrand(HV_DIMENSIONS)
 end
-serialize(HV_PATH, hvectors)
+for i in 1:CONTEXT_SIZE
+    shift_hvectors[i] = bitrand(HV_DIMENSIONS)
+end
+serialize(HV_PATH, (hvectors, shift_hvectors))
 
 if RANDOMLY_REDUCE_CONTEXT_SIZE
     println("\nSkipping preparing the HV cache because RANDOMLY_REDUCE_CONTEXT_SIZE is set to true.")
@@ -66,12 +70,12 @@ else
     n_interact = Threads.nthreads(:interactive)
     prepare_time = @elapsed begin
         hvs = InputBatch(HV_DIMENSIONS, n)
-        vlocal_acc = [zeros(BUNDLE_ACC_TYPE, HV_DIMENSIONS) for _ in 1:n_default]
-        vlocal_scratch = [BitVector(undef, HV_DIMENSIONS) for _ in 1:n_default]
-        vlocal_scratch2 = [BitVector(undef, HV_DIMENSIONS) for _ in 1:n_default]
+        local_acc = [zeros(BUNDLE_ACC_TYPE, HV_DIMENSIONS) for _ in 1:n_default]
+        local_scratch = [BitVector(undef, HV_DIMENSIONS) for _ in 1:n_default]
+        local_scratch2 = [BitVector(undef, HV_DIMENSIONS) for _ in 1:n_default]
         @threads for start in 1:n
             tid = Threads.threadid() - n_interact
-            hv = gen_context_hvector!(vlocal_acc[tid], vlocal_scratch[tid], vlocal_scratch2[tid], @view(CORPUS[start:start + CONTEXT_SIZE - 1]), hvectors)
+            hv = gen_context_hvector!(local_acc[tid], local_scratch[tid], local_scratch2[tid], @view(CORPUS[start:start + CONTEXT_SIZE - 1]), hvectors, shift_hvectors)
             copyto!(view(hvs, :, start), InputVector(hv, copy=false))
         end
     end
@@ -82,7 +86,7 @@ end
 local_acc = zeros(BUNDLE_ACC_TYPE, HV_DIMENSIONS)
 local_scratch = BitVector(undef, HV_DIMENSIONS)
 local_scratch2 = BitVector(undef, HV_DIMENSIONS)
-hv_sample = gen_context_hvector!(local_acc, local_scratch, local_scratch2, @view(CORPUS[1:CONTEXT_SIZE]), hvectors)
+hv_sample = gen_context_hvector!(local_acc, local_scratch, local_scratch2, @view(CORPUS[1:CONTEXT_SIZE]), hvectors, shift_hvectors)
 x_sample = InputVector(hv_sample)
 y_samples = collect(keys(hvectors))
 tm = TMClassifier(HV_DIMENSIONS, y_samples, CLAUSES, T, S, L, LF, states_num=STATES_NUM, include_limit=INCLUDE_LIMIT)
@@ -90,7 +94,7 @@ save(compile(tm), TM_PATH)  # Save empty model for sample()
 
 density = round(sum(count_ones, x_sample) / HV_DIMENSIONS * 100, digits=2)
 println("\nClasses: $(tm.classes_num), clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), LF: $(tm.LF), state range: 0-$(tm.state_max), include limit: $(tm.include_limit).")
-println("Input vector size: $(length(x_sample)) bits, density: $(density)%, training dataset size: $(CORPUS_LENGTH).")
+println("Input vector size: $(HV_DIMENSIONS) bits, density: $(density)%, training dataset size: $(CORPUS_LENGTH).")
 println("Expected average clause literal density: $(round(tm.L / HV_DIMENSIONS * 100, digits=2))%. Using literals index: false.")
 println("Running in $(nthreads()) threads. Training over $(EPOCHS) epochs:\n")
 all_time = @elapsed begin
@@ -107,7 +111,7 @@ all_time = @elapsed begin
                     context = @view(CORPUS[start:finish])
                     if RANDOMLY_REDUCE_CONTEXT_SIZE
                         context = @view(context[rand(max(end - CONTEXT_SIZE + 1, 1):end):end])
-                        hv = gen_context_hvector!(local_acc, local_scratch, local_scratch2, context, hvectors)
+                        hv = gen_context_hvector!(local_acc, local_scratch, local_scratch2, context, hvectors, shift_hvectors)
                         x = InputVector(hv, copy=false)
                     else
                         x = view(hvs, :, start)
@@ -134,5 +138,5 @@ elapsed = Time(0) + Second(floor(Int, all_time))
 average_clause_density = round((literals_sum(tm) / (tm.classes_num * tm.clauses_num * 2)) / HV_DIMENSIONS * 100, digits=2)
 println("\n$(EPOCHS) epochs done in $(elapsed).")
 println("Classes: $(tm.classes_num), clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), LF: $(tm.LF), state range: 0-$(tm.state_max), include limit: $(tm.include_limit).")
-println("Input vector size: $(length(x_sample)) bits, density: $(density)%, training dataset size: $(CORPUS_LENGTH).")
+println("Input vector size: $(HV_DIMENSIONS) bits, density: $(density)%, training dataset size: $(CORPUS_LENGTH).")
 println("Average clause literal density: $(average_clause_density)%. Using literals index: false.\n")

@@ -6,7 +6,7 @@ using Serialization
 using .Tsetlin: TMClassifier, InputVector, predict, load
 
 
-hvectors = deserialize(HV_PATH)
+hvectors, shift_hvectors = deserialize(HV_PATH)
 tm = load(TM_PATH)
 
 prompt = PROMPT[max(end - CONTEXT_SIZE + 1, 1):end]
@@ -21,7 +21,7 @@ for n in 1:TOKENS_GENERATE
     if RANDOMLY_REDUCE_CONTEXT_SIZE
         context = @view(context[rand(max(end - CONTEXT_SIZE + 1, 1):end):end])
     end
-    hv = gen_context_hvector!(acc, local_scratch, local_scratch2, context, hvectors; noise=TEMPERATURE_NOISE)
+    hv = gen_context_hvector!(acc, local_scratch, local_scratch2, context, hvectors, shift_hvectors; noise=TEMPERATURE_NOISE)
     push!(prompt_vector, predict(tm, InputVector(hv, copy=false), index=SPARSE_INDEX))
 
     print(Char(prompt_vector[n + length(prompt)]))
