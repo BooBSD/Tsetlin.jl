@@ -80,7 +80,6 @@ else
         end
     end
     println("Done. Elapsed in $(Time(0) + Second(round(Int, prepare_time))).")
-    prepare_time |> println
 end
 
 # Training the TM model
