@@ -47,14 +47,12 @@ function bundle!(
     fill!(acc, zero(BUNDLE_ACC_TYPE))
     chunks = scratch.chunks
     @inbounds for x in 1:28
-        hv_x = hvectors[x]
+        hv_x_chunks = hvectors[x].chunks
         for y in 1:28
-            hv_y = hvectors[28 + y]
+            hv_y_chunks = hvectors[28 + y].chunks
             weight = image[x, y]
             w_pos = weight
             w_neg = -weight
-            hv_x_chunks = hv_x.chunks
-            hv_y_chunks = hv_y.chunks
             for c in eachindex(chunks)
                 chunk = hv_x_chunks[c] ⊻ hv_y_chunks[c]
                 base = c * 64 - 63
