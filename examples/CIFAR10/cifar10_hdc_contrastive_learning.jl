@@ -14,10 +14,10 @@ using .Tsetlin: TMClassifier, InputVector, train!, unzip, vote, accuracy, litera
 
 const HV_PATH = joinpath(tempdir(), "hvectors_cifar")
 const DATASET_PATH = joinpath(tempdir(), "dataset_cifar")
-const DATASET_CACHING = false
-const HV_DIMENSIONS = 1024 * 64
 const BUNDLE_ACC_TYPE = Float32
+const HV_DIMENSIONS = 1024 * 64
 const RANDOM_NEGATIVE_SAMPLE = false
+const DATASET_CACHING = false
 
 const HV_NUMBERS = 3 + 32 + 32
 
