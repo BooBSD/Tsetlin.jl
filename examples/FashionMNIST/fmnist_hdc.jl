@@ -11,11 +11,13 @@ using MLDatasets: MNIST, FashionMNIST
 using .Tsetlin: TMClassifier, InputVector, InputBatch, train!, unzip
 
 
+# const DATASET = MNIST
+const DATASET = FashionMNIST
 const HV_PATH = joinpath(tempdir(), "hvectors_fmnist")
 const DATASET_PATH = joinpath(tempdir(), "dataset_fmnist")
-const DATASET_CACHING = false
-const HV_DIMENSIONS = 1024 * 32
 const BUNDLE_ACC_TYPE = Float32
+const HV_DIMENSIONS = 1024 * 32
+const DATASET_CACHING = false
 
 const HV_NUMBERS = 28 + 28
 
@@ -43,25 +45,38 @@ function bundle!(
     hvectors::Memory{BitVector},
 )::BitVector
     fill!(acc, zero(BUNDLE_ACC_TYPE))
+    chunks = scratch.chunks
     @inbounds for x in 1:28
         hv_x = hvectors[x]
         for y in 1:28
             hv_y = hvectors[28 + y]
-            @simd for i in eachindex(scratch.chunks)
-                scratch.chunks[i] = hv_x.chunks[i] ⊻ hv_y.chunks[i]
-            end
             weight = image[x, y]
             w_pos = weight
             w_neg = -weight
-            @simd for j in eachindex(scratch)
-                acc[j] += ifelse(scratch[j], w_pos, w_neg)
+            hv_x_chunks = hv_x.chunks
+            hv_y_chunks = hv_y.chunks
+            for c in eachindex(chunks)
+                chunk = hv_x_chunks[c] ⊻ hv_y_chunks[c]
+                base = c * 64 - 63
+                @simd for j in 0:63
+                    a = base + j
+                    pos = ((chunk >> j) & 1) == 1
+                    acc[a] += ifelse(pos, w_pos, w_neg)
+                end
             end
         end
     end
     zero_val = zero(BUNDLE_ACC_TYPE)
-    @inbounds @simd for i in eachindex(acc)
-        val = acc[i]
-        scratch[i] = ifelse(val != zero_val, val > zero_val, iseven(i))
+    @inbounds for c in eachindex(chunks)
+        chunk = zero(UInt64)
+        base = c * 64 - 63
+        @simd for j in 0:63
+            a = base + j
+            val = acc[a]
+            bit = ifelse(val != zero_val, val > zero_val, iseven(a))
+            chunk |= (UInt64(bit) << j)
+        end
+        chunks[c] = chunk
     end
     return scratch
 end
@@ -74,10 +89,8 @@ if DATASET_CACHING
     println("Done.")
 else
     print("\nPreparing dataset... ")
-    # x_train, y_train = unzip([MNIST(:train, Tx=Float32)...])
-    # x_test, y_test = unzip([MNIST(:test, Tx=Float32)...])
-    x_train, y_train = unzip([FashionMNIST(:train, Tx=Float32)...])
-    x_test, y_test = unzip([FashionMNIST(:test, Tx=Float32)...])
+    x_train, y_train = unzip([DATASET(:train, Tx=Float32)...])
+    x_test, y_test = unzip([DATASET(:test, Tx=Float32)...])
     n_default = Threads.nthreads(:default)
     n_interact = Threads.nthreads(:interactive)
     prepare_time = @elapsed begin
@@ -106,7 +119,7 @@ else
     y_train = Int8.(y_train)
     y_test = Int8.(y_test)
     serialize(DATASET_PATH, (X_train, y_train, X_test, y_test))
-    println("Done. Elapsed in $(Time(0) + Second(floor(Int, prepare_time))).")
+    println("Done. Elapsed in $(Time(0) + Second(round(Int, prepare_time))).")
 end
 
 # Training the TM model
