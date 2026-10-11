@@ -14,10 +14,10 @@ using .Tsetlin: TMClassifier, InputVector, train!, unzip, vote, accuracy, litera
 
 const HV_PATH = joinpath(tempdir(), "hvectors_cifar")
 const DATASET_PATH = joinpath(tempdir(), "dataset_cifar")
-const DATASET_CACHING = false
-const HV_DIMENSIONS = 1024 * 64
 const BUNDLE_ACC_TYPE = Float32
+const HV_DIMENSIONS = 1024 * 64
 const RANDOM_NEGATIVE_SAMPLE = false
+const DATASET_CACHING = false
 
 const HV_NUMBERS = 3 + 32 + 32
 
@@ -45,30 +45,41 @@ function bundle(
     image::Array{Float32, 3},
     hvectors::Memory{BitVector},
 )::BitVector
-    scratch = BitVector(undef, HV_DIMENSIONS)
     fill!(acc, zero(BUNDLE_ACC_TYPE))
+    scratch = BitVector(undef, HV_DIMENSIONS)
+    chunks = scratch.chunks
     @inbounds for channel in 1:3
-        hv_channel = hvectors[channel]
+        hv_channel_chunks = hvectors[channel].chunks
         for x in 1:32
-            hv_x = hvectors[3 + x]
+            hv_x_chunks = hvectors[3 + x].chunks
             for y in 1:32
-                hv_y = hvectors[3 + 32 + y]
-                @simd for i in eachindex(scratch.chunks)
-                    scratch.chunks[i] = hv_channel.chunks[i] ⊻ hv_x.chunks[i] ⊻ hv_y.chunks[i]
-                end
+                hv_y_chunks = hvectors[3 + 32 + y].chunks
                 weight = image[x, y, channel]
                 w_pos = weight
                 w_neg = -weight
-                @simd for j in eachindex(scratch)
-                    acc[j] += ifelse(scratch[j], w_pos, w_neg)
+                for c in eachindex(chunks)
+                    chunk = hv_channel_chunks[c] ⊻ hv_x_chunks[c] ⊻ hv_y_chunks[c]
+                    base = c * 64 - 63
+                    @simd for j in 0:63
+                        a = base + j
+                        pos = ((chunk >> j) & 1) == 1
+                        acc[a] += ifelse(pos, w_pos, w_neg)
+                    end
                 end
             end
         end
     end
     zero_val = zero(BUNDLE_ACC_TYPE)
-    @inbounds @simd for i in eachindex(acc)
-        val = acc[i]
-        scratch[i] = ifelse(val != zero_val, val > zero_val, iseven(i))
+    @inbounds for c in eachindex(chunks)
+        chunk = zero(UInt64)
+        base = c * 64 - 63
+        @simd for j in 0:63
+            a = base + j
+            val = acc[a]
+            bit = ifelse(val != zero_val, val > zero_val, iseven(a))
+            chunk |= (UInt64(bit) << j)
+        end
+        chunks[c] = chunk
     end
     return scratch
 end
@@ -115,7 +126,6 @@ else
         X_train = Vector{BitVector}(undef, length(x_train))
         X_test = Vector{BitVector}(undef, length(x_test))
         accs = [zeros(BUNDLE_ACC_TYPE, HV_DIMENSIONS) for _ in 1:n_default]
-        scratchs = [BitVector(undef, HV_DIMENSIONS) for _ in 1:n_default]
         @threads for i in eachindex(x_train)
             tid = Threads.threadid() - n_interact
             X_train[i] = bundle(accs[tid], x_train[i], hvectors)
@@ -126,7 +136,7 @@ else
         end
     end
     serialize(DATASET_PATH, (X_train, y_train, X_test, y_test))
-    println("Done. Elapsed in $(Time(0) + Second(floor(Int, prepare_time))).")
+    println("Done. Elapsed in $(Time(0) + Second(round(Int, prepare_time))).")
 end
 
 
@@ -204,7 +214,7 @@ function main()
             @printf("#%s  Accuracy: %.2f%%  Best: %.2f%%  Training: %.3fs  Testing: %.3fs\n", e, acc * 100, best_acc * 100, training_time, testing_time)
         end
     end
-    elapsed = Time(0) + Second(floor(Int, all_time))
+    elapsed = Time(0) + Second(round(Int, all_time))
     average_clause_density = round((literals_sum(tm) / (tm.classes_num * tm.clauses_num * 2)) / HV_DIMENSIONS * 100, digits=2)
     println("\n$(EPOCHS) epochs done in $(elapsed).")
     println("Classes: $(tm.classes_num), clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), LF: $(tm.LF), state range: 0-$(tm.state_max), include limit: $(tm.include_limit).")
