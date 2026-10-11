@@ -79,7 +79,8 @@ else
             copyto!(view(hvs, :, start), InputVector(hv, copy=false))
         end
     end
-    println("Done. Elapsed in $(Time(0) + Second(floor(Int, prepare_time))).")
+    println("Done. Elapsed in $(Time(0) + Second(round(Int, prepare_time))).")
+    prepare_time |> println
 end
 
 # Training the TM model
@@ -134,7 +135,7 @@ all_time = @elapsed begin
         end
     end
 end
-elapsed = Time(0) + Second(floor(Int, all_time))
+elapsed = Time(0) + Second(round(Int, all_time))
 average_clause_density = round((literals_sum(tm) / (tm.classes_num * tm.clauses_num * 2)) / HV_DIMENSIONS * 100, digits=2)
 println("\n$(EPOCHS) epochs done in $(elapsed).")
 println("Classes: $(tm.classes_num), clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), LF: $(tm.LF), state range: 0-$(tm.state_max), include limit: $(tm.include_limit).")

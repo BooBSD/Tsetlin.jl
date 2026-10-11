@@ -66,6 +66,7 @@ function gen_context_hvector!(
 )::BitVector where T<:AbstractFloat
     len = length(context_window)
     fill!(acc, zero(T))
+    chunks = scratch.chunks
     weights = compute_weights(len, alpha)
     # weights = compute_weights_exp(len, alpha)
     n = 1
@@ -76,7 +77,6 @@ function gen_context_hvector!(
             w_pos = weight
             w_neg = -weight
             gen_ngram!(hvectors, @view(context_window[i-NGRAM+1:i]), scratch, scratch2)
-            chunks = scratch.chunks
             shift_chunks = shift_hvectors[dist_from_end].chunks
             for c in eachindex(chunks)
                 chunk = chunks[c] ⊻ shift_chunks[c]
@@ -95,16 +95,18 @@ function gen_context_hvector!(
             acc[j] += rand((noise, -noise))
         end
     end
-    # return acc .> 0
     zero_val = zero(T)
-    @inbounds for i in eachindex(acc)
-        val = acc[i]
-        if val != zero_val
-            scratch[i] = val > zero_val
-        else
-            scratch[i] = rand(Bool)
-            # "!!!!!!!!11111!!!!!" |> println
+    @inbounds for c in eachindex(chunks)
+        chunk = zero(UInt64)
+        base = c * 64 - 63
+        @simd for j in 0:63
+            a = base + j
+            val = acc[a]
+            # bit = ifelse(val != zero_val, val > zero_val, iseven(a))
+            bit = val != zero_val ? val > zero_val : rand(Bool)
+            chunk |= (UInt64(bit) << j)
         end
+        chunks[c] = chunk
     end
     return scratch
 end
