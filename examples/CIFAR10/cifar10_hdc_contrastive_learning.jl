@@ -126,7 +126,6 @@ else
         X_train = Vector{BitVector}(undef, length(x_train))
         X_test = Vector{BitVector}(undef, length(x_test))
         accs = [zeros(BUNDLE_ACC_TYPE, HV_DIMENSIONS) for _ in 1:n_default]
-        scratchs = [BitVector(undef, HV_DIMENSIONS) for _ in 1:n_default]
         @threads for i in eachindex(x_train)
             tid = Threads.threadid() - n_interact
             X_train[i] = bundle(accs[tid], x_train[i], hvectors)
