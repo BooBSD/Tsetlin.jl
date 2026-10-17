@@ -1,42 +1,5 @@
 export HDC
 
-using Random
-
-
-# Zipf
-function compute_weights(n::Int, alpha::T)::Vector{T} where T<:AbstractFloat
-    normalization_sum = 0.0
-    weights = Vector{T}(undef, n)
-    @inbounds for k in 1:n
-        val = 1.0 / (k ^ alpha)
-        normalization_sum += val
-        weights[k] = val
-    end
-    inv_norm = 1.0 / normalization_sum
-    @inbounds @simd for k in 1:n
-        weights[k] *= inv_norm
-    end
-    return weights
-end
-
-# Exponential
-function compute_weights_exp(n::Int, lambda::T)::Vector{T} where T<:AbstractFloat
-    normalization_sum = zero(T)
-    weights = Vector{T}(undef, n)
-    decay_factor = exp(-lambda)
-    val = decay_factor
-    @inbounds for k in 1:n
-        normalization_sum += val
-        weights[k] = val
-        val *= decay_factor
-    end
-    inv_norm = one(T) / normalization_sum
-    @inbounds @simd for k in 1:n
-        weights[k] *= inv_norm
-    end
-    return weights
-end
-
 
 @inline function gen_ngram!(hvectors::Dict{UInt8, BitVector}, context::AbstractVector{UInt8}, scratch::BitVector, scratch2::BitVector)::BitVector
     len = length(context)
@@ -61,19 +24,16 @@ function gen_context_hvector!(
     context_window::AbstractVector{UInt8},
     hvectors::Dict{UInt8, BitVector},
     shift_hvectors::Memory{BitVector};
-    alpha::T=ALPHA_CONTEXT,
-    noise::T=zero(T)
+    alpha::T=ALPHA_CONTEXT
 )::BitVector where T<:AbstractFloat
     len = length(context_window)
     fill!(acc, zero(T))
     chunks = scratch.chunks
-    weights = compute_weights(len, alpha)
-    # weights = compute_weights_exp(len, alpha)
     n = 1
     @inbounds for i in 1:len
         if n > NGRAM - 1
             dist_from_end = len - i + 1
-            weight = weights[dist_from_end]
+            weight = one(T) / (T(dist_from_end) ^ alpha)
             w_pos = weight
             w_neg = -weight
             gen_ngram!(hvectors, @view(context_window[i-NGRAM+1:i]), scratch, scratch2)
@@ -90,11 +50,6 @@ function gen_context_hvector!(
         end
         n += 1
     end
-    if noise != zero(T)
-        @inbounds @simd for j in 1:HV_DIMENSIONS
-            acc[j] += rand((noise, -noise))
-        end
-    end
     zero_val = zero(T)
     @inbounds for c in eachindex(chunks)
         chunk = zero(UInt64)
@@ -102,8 +57,8 @@ function gen_context_hvector!(
         @simd for j in 0:63
             a = base + j
             val = acc[a]
-            # bit = ifelse(val != zero_val, val > zero_val, iseven(a))
-            bit = val != zero_val ? val > zero_val : rand(Bool)
+            bit = ifelse(val != zero_val, val > zero_val, iseven(a))
+            # bit = val != zero_val ? val > zero_val : rand(Bool)
             chunk |= (UInt64(bit) << j)
         end
         chunks[c] = chunk
