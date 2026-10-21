@@ -30,24 +30,14 @@ for t in tokens
     tokens_count[t] = count(==(t), CORPUS_FULL)
 end
 
-
-max_freq = maximum(values(tokens_count))
 tokens_probs::Dict{UInt8, Float64} = Dict()
 
-# Logarithmic
-# for (char, count) in tokens_count
-#     raw_ratio = max_freq / count
-#     tokens_probs[char] = min(1.0 + ALPHA_NORM * log(raw_ratio), 100.0)
-# end
-
-# Zipf
-for (char, count) in tokens_count
-    raw_ratio = max_freq / count
-    tokens_probs[char] = raw_ratio ^ ALPHA_NORM
+sort!(tokens, by=t -> tokens_count[t], rev=true)
+for i in eachindex(tokens)
+    tokens_probs[tokens[i]] = i ^ ALPHA_NORM
 end
 
-sort!(tokens, by=t -> tokens_probs[t], rev=true)
-for t in tokens
+for t in reverse(tokens)
     println("$(Char(t)) ($(t)): $(get_stochastic_updates(tokens_probs[t]))")
 end
 
